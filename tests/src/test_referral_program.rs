@@ -82,4 +82,41 @@ fn test_create_sol_referral_program() {
     assert_eq!(referral_program.total_referrals, 0);
     assert_eq!(referral_program.total_rewards_distributed, 0);
     assert!(referral_program.is_active);
+
+    // Find PDA for vault
+    let (vault, _) = Pubkey::find_program_address(
+        &[b"vault", referral_program_pubkey.as_ref()],
+        &program_id,
+    );
+
+    // Test depositing SOL
+    let deposit_amount = 500_000_000; // 0.5 SOL
+    let tx = client
+        .program(program_id)
+        .unwrap()
+        .request()
+        .accounts(solrefer::accounts::DepositSol {
+            referral_program: referral_program_pubkey,
+            vault,
+            authority: owner.pubkey(),
+            system_program: system_program::ID,
+        })
+        .args(solrefer::instruction::DepositSol {
+            amount: deposit_amount,
+        })
+        .signer(&owner)
+        .send()
+        .expect("Failed to deposit SOL");
+
+    println!("Deposited SOL. Transaction signature: {}", tx);
+
+    // Verify the vault balance
+    let vault_balance = client
+        .program(program_id)
+        .unwrap()
+        .rpc()
+        .get_balance(&vault)
+        .expect("Failed to get vault balance");
+
+    assert_eq!(vault_balance, deposit_amount, "Vault balance should match deposit amount");
 }
