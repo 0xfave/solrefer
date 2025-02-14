@@ -1,10 +1,8 @@
 use anchor_client::
     solana_sdk::{
         pubkey::Pubkey,
-        signature::Keypair,
         signer::Signer,
         system_program,
-        system_instruction,
     }
 ;
 use anchor_spl::token::spl_token;

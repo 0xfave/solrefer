@@ -7,7 +7,7 @@ use anchor_client::{
         native_token::LAMPORTS_PER_SOL,
         pubkey::Pubkey,
         signature::{read_keypair_file, Keypair},
-        signer::{keypair, Signer}, system_instruction,
+        signer::Signer, system_instruction,
     },
     Client, Cluster
 };

@@ -75,27 +75,58 @@ pub mod solrefer {
         )
     }
 
-    /// Deposits funds into the referral program's vault.
+    /// Deposits SOL into the referral program's vault.
     ///
-    /// This instruction allows the program authority to deposit funds that will be used
-    /// to pay out referral rewards. The type of deposit (SOL or SPL token) must match
-    /// the referral program's configuration.
+    /// This instruction allows the program authority to deposit SOL that will be used
+    /// to pay out referral rewards. The program must be configured for SOL deposits.
     ///
     /// # Arguments
-    /// * `ctx` - The context containing all required accounts
-    /// * `is_token_deposit` - Flag indicating if this is a token deposit (true) or SOL deposit (false)
-    /// * `amount` - Amount to deposit (in lamports for SOL, or token amount for SPL tokens)
+    /// * `ctx` - The deposit context containing:
+    ///   - referral_program: The program account (must be active)
+    ///   - vault: The SOL vault PDA
+    ///   - authority: The program authority (signer)
+    ///   - system_program: The system program
+    /// * `amount` - Amount to deposit in lamports
     ///
-    /// The deposit will be validated to ensure:
-    /// - The depositor is the program authority
-    /// - The program is active
-    /// - The deposit amount is greater than 0
-    /// - For token deposits, the correct token mint and program are used
-    pub fn deposit(
-        ctx: Context<Deposit>,
-        is_token_deposit: bool,
+    /// # Errors
+    /// * `ProgramInactive` - If the referral program is not active
+    /// * `InvalidAuthority` - If the signer is not the program authority
+    /// * `InsufficientDeposit` - If the deposit amount is zero
+    /// * `SolDepositToTokenProgram` - If attempting SOL deposit to a token program
+    pub fn deposit_sol(
+        ctx: Context<DepositSol>,
         amount: u64,
     ) -> Result<()> {
-        instructions::deposit::deposit(ctx, is_token_deposit, amount)
+        instructions::deposit::deposit_sol(ctx, amount)
+    }
+
+    /// Deposits tokens into the referral program's vault.
+    ///
+    /// This instruction allows the program authority to deposit SPL tokens that will be used
+    /// to pay out referral rewards. The program must be configured for token deposits.
+    ///
+    /// # Arguments
+    /// * `ctx` - The deposit context containing:
+    ///   - referral_program: The program account (must be active)
+    ///   - token_vault: The token vault PDA
+    ///   - token_mint: The token mint (must match program config)
+    ///   - depositor_token_account: The authority's token account
+    ///   - authority: The program authority (signer)
+    ///   - token_program: The token program
+    /// * `amount` - Amount to deposit in token units
+    ///
+    /// # Errors
+    /// * `ProgramInactive` - If the referral program is not active
+    /// * `InvalidAuthority` - If the signer is not the program authority
+    /// * `InvalidTokenProgram` - If the token program is incorrect
+    /// * `InvalidTokenMint` - If the token mint doesn't match program's configuration
+    /// * `InvalidTokenAccounts` - If the token accounts are invalid
+    /// * `InsufficientDeposit` - If the deposit amount is zero
+    /// * `TokenDepositToSolProgram` - If attempting token deposit to a SOL program
+    pub fn deposit_token(
+        ctx: Context<DepositToken>,
+        amount: u64,
+    ) -> Result<()> {
+        instructions::deposit::deposit_token(ctx, amount)
     }
 }
