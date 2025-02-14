@@ -7,10 +7,11 @@ use anchor_client::{
         native_token::LAMPORTS_PER_SOL,
         pubkey::Pubkey,
         signature::{read_keypair_file, Keypair},
-        signer::Signer,
+        signer::{keypair, Signer}, system_instruction,
     },
     Client, Cluster
 };
+use anchor_spl::token::spl_token;
 use std::process::Command;
 
 pub fn ensure_test_validator() -> RpcClient {
@@ -117,4 +118,52 @@ pub fn setup() -> (Keypair, Keypair, Keypair, Pubkey, Client<Arc<Keypair>>) {
 
     // Return the vault keypair, wallets, program ID, and client for reuse
     (owner, alice, bob, program_id, client)
+}
+
+pub fn create_mint(owner: &Keypair, client: &Client<Arc<Keypair>>, program_id: Pubkey) -> Keypair {
+    // Create new token mint
+    let mint = Keypair::new();
+    let mint_authority = &owner;
+    
+    // Create mint account
+    let rpc_client = client.program(program_id).unwrap().rpc();
+    let rent = rpc_client.get_minimum_balance_for_rent_exemption(82).unwrap();
+    let ix = system_instruction::create_account(
+        &owner.pubkey(),
+        &mint.pubkey(),
+        rent,
+        82,
+        &spl_token::id(),
+    );
+    
+    let tx = client
+        .program(program_id)
+        .unwrap()
+        .request()
+        .instruction(ix)
+        .signer(&owner)
+        .signer(&mint)
+        .send()
+        .expect("Failed to create mint account");
+    println!("Created mint account. Transaction signature: {}", tx);
+
+    // Initialize mint
+    let ix = spl_token::instruction::initialize_mint(
+        &spl_token::id(),
+        &mint.pubkey(),
+        &mint_authority.pubkey(),
+        Some(&mint_authority.pubkey()),
+        9,
+    ).unwrap();
+
+    let tx = client
+        .program(program_id)
+        .unwrap()
+        .request()
+        .instruction(ix)
+        .send()
+        .expect("Failed to initialize mint");
+    println!("Initialized mint. Transaction signature: {}", tx);
+
+    mint
 }
