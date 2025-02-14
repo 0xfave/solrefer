@@ -10,7 +10,6 @@ use anchor_client::{
         signer::Signer,
         system_program,
         system_instruction,
-        rent::Rent,
     },
     Client, Cluster
 };
@@ -133,12 +132,17 @@ fn test_create_sol_referral_program() {
     let locked_period = 7 * 24 * 60 * 60; // 7 days in seconds
     let early_redemption_fee = 1000; // 10% in basis points
     let mint_fee = 500; // 5% in basis points
-    let min_stake_amount = 100000000; // 0.1 SOL
 
     // Find PDA for referral program
     let binding = owner.pubkey();
     let seeds = [b"referral_program".as_ref(), binding.as_ref()];
     let (referral_program_pubkey, _) = Pubkey::find_program_address(&seeds, &program_id);
+
+    // Find PDA for eligibility criteria
+    let (eligibility_criteria, _bump) = Pubkey::find_program_address(
+        &[b"eligibility_criteria", referral_program_pubkey.as_ref()],
+        &program_id,
+    );
 
     // Create SOL referral program
     let tx = client
@@ -147,8 +151,9 @@ fn test_create_sol_referral_program() {
         .request()
         .accounts(solrefer::accounts::CreateReferralProgram {
             referral_program: referral_program_pubkey,
-            token_mint_info: None,
+            eligibility_criteria,
             authority: owner.pubkey(),
+            token_mint_info: None,
             system_program: system_program::ID,
             token_program: None,
         })
@@ -158,7 +163,16 @@ fn test_create_sol_referral_program() {
             locked_period,
             early_redemption_fee,
             mint_fee,
-            min_stake_amount,
+            base_reward: 50_000_000, // 0.05 SOL base reward
+            tier1_threshold: 5, // 5 referrals for tier 1
+            tier1_reward: 75_000_000, // 0.075 SOL tier 1 reward
+            tier2_threshold: 10, // 10 referrals for tier 2
+            tier2_reward: 100_000_000, // 0.1 SOL tier 2 reward
+            max_reward_cap: 1_000_000_000, // 1 SOL max rewards
+            revenue_share_percent: 500, // 5% revenue share
+            required_token: None,
+            min_token_amount: 0,
+            program_end_time: None,
         })
         .signer(&owner)
         .send()
@@ -179,7 +193,6 @@ fn test_create_sol_referral_program() {
     assert_eq!(referral_program.locked_period, locked_period);
     assert_eq!(referral_program.early_redemption_fee, early_redemption_fee);
     assert_eq!(referral_program.mint_fee, mint_fee);
-    assert_eq!(referral_program.min_stake_amount, min_stake_amount);
     assert_eq!(referral_program.total_referrals, 0);
     assert_eq!(referral_program.total_rewards_distributed, 0);
     assert!(referral_program.is_active);
@@ -238,12 +251,17 @@ fn test_create_referral_program_with_token_mint() {
     let locked_period = 7 * 24 * 60 * 60; // 7 days in seconds
     let early_redemption_fee = 1000; // 10% in basis points
     let mint_fee = 500; // 5% in basis points
-    let min_stake_amount = 100_000_000; // 0.1 token
 
     // Find PDA for referral program
     let binding = owner.pubkey();
     let seeds = [b"referral_program".as_ref(), binding.as_ref()];
     let (referral_program_pubkey, _) = Pubkey::find_program_address(&seeds, &program_id);
+
+    // Find PDA for eligibility criteria
+    let (eligibility_criteria, _bump) = Pubkey::find_program_address(
+        &[b"eligibility_criteria", referral_program_pubkey.as_ref()],
+        &program_id,
+    );
 
     // Create token referral program
     let tx = client
@@ -252,8 +270,9 @@ fn test_create_referral_program_with_token_mint() {
         .request()
         .accounts(solrefer::accounts::CreateReferralProgram {
             referral_program: referral_program_pubkey,
-            token_mint_info: Some(mint.pubkey()),
+            eligibility_criteria,
             authority: owner.pubkey(),
+            token_mint_info: Some(mint.pubkey()),
             system_program: system_program::ID,
             token_program: Some(spl_token::id()),
         })
@@ -263,7 +282,16 @@ fn test_create_referral_program_with_token_mint() {
             locked_period,
             early_redemption_fee,
             mint_fee,
-            min_stake_amount,
+            base_reward: 50_000_000, // 0.05 SOL base reward
+            tier1_threshold: 5, // 5 referrals for tier 1
+            tier1_reward: 75_000_000, // 0.075 SOL tier 1 reward
+            tier2_threshold: 10, // 10 referrals for tier 2
+            tier2_reward: 100_000_000, // 0.1 SOL tier 2 reward
+            max_reward_cap: 1_000_000_000, // 1 SOL max rewards
+            revenue_share_percent: 500, // 5% revenue share
+            required_token: None,
+            min_token_amount: 0,
+            program_end_time: None,
         })
         .signer(&owner)
         .send()
@@ -284,7 +312,6 @@ fn test_create_referral_program_with_token_mint() {
     assert_eq!(referral_program.locked_period, locked_period);
     assert_eq!(referral_program.early_redemption_fee, early_redemption_fee);
     assert_eq!(referral_program.mint_fee, mint_fee);
-    assert_eq!(referral_program.min_stake_amount, min_stake_amount);
     assert_eq!(referral_program.total_referrals, 0);
     assert_eq!(referral_program.total_rewards_distributed, 0);
     assert!(referral_program.is_active);

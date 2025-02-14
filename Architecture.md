@@ -119,6 +119,69 @@ retrieve_program_data(program_id: ProgramId) -> ProgramData
 update_stored_metadata(metadata_id: MetadataId, new_data: Metadata) -> Result<(), ProgramError>
 ```
 
+## Program vs Client Responsibilities
+
+### Program-Side (On-Chain)
+
+#### 1. Core Economic Parameters
+- Base reward amount per referral
+- Tiered reward structure (2 tiers)
+- Maximum reward cap
+- Revenue sharing percentages
+
+#### 2. Basic Requirements
+- Minimum stake amount validation
+- Required token holdings verification
+- Token amount verification
+
+#### 3. Time Parameters
+- Program start/end time enforcement
+- Timestamp validation for rewards
+
+### Client-Side (Off-Chain)
+
+#### 1. Quality Metrics
+- Track referred user's activity level
+- Monitor user engagement
+- Calculate and display conversion rates
+- Generate performance analytics
+
+#### 2. Advanced Requirements
+- Account age verification
+- Geographic restrictions
+- User demographics tracking
+- Historical performance analysis
+
+#### 3. Analytics Dashboard
+- Referral success metrics
+- ROI calculations
+- Performance visualization
+- User behavior analysis
+
+#### 4. User Experience
+- Referral link generation and tracking
+- User interface for program creation
+- Performance dashboards
+- Reward claim interface
+
+### Integration Points
+
+1. **Program Creation**
+   - Client: Collects and validates program parameters
+   - Program: Stores and enforces core economic rules
+
+2. **Referral Processing**
+   - Client: Tracks referral link usage and user activity
+   - Program: Validates eligibility and processes rewards
+
+3. **Reward Distribution**
+   - Client: Displays reward status and claim options
+   - Program: Validates and executes reward transfers
+
+4. **Performance Tracking**
+   - Client: Comprehensive analytics and reporting
+   - Program: Core economic and stake validation
+
 ## Protocol Requirements
 
 1. **The protocol shall allow a user to create and manage decentralized referral programs.**
@@ -312,4 +375,3 @@ graph TD
     class Arweave storage;
     class Wallet external;
     class Legend legend;
-```
