@@ -8,7 +8,7 @@ use anchor_client::{anchor_lang,
 use anchor_spl::token::spl_token;
 use solrefer::state::ReferralProgram;
 
-use crate::test_util::{create_mint, create_token_account, mint_tokens, setup};
+use crate::test_util::{create_mint, create_token_account, deposit_tokens, mint_tokens, setup};
 #[test]
 fn test_create_referral_program_with_token_mint() {
     let (owner, _, _, program_id, client) = setup();
@@ -134,24 +134,7 @@ fn test_create_referral_program_with_token_mint() {
 
     // Test depositing tokens
     let deposit_amount = 500_000_000; // 0.5 tokens
-    let tx = client
-        .program(program_id)
-        .unwrap()
-        .request()
-        .accounts(solrefer::accounts::DepositToken {
-            referral_program: referral_program_pubkey,
-            token_vault,
-            token_mint: mint.pubkey(),
-            depositor_token_account: owner_token_account,
-            authority: owner.pubkey(),
-            token_program: spl_token::id(),
-        })
-        .args(solrefer::instruction::DepositToken {
-            amount: deposit_amount,
-        })
-        .signer(&owner)
-        .send()
-        .expect("Failed to deposit tokens");
+    let tx = deposit_tokens(deposit_amount, referral_program_pubkey, token_vault, mint.pubkey(), owner_token_account, &owner, &client, program_id);
 
     println!("Deposited tokens. Transaction signature: {}", tx);
 

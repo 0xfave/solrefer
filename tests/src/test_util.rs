@@ -1,18 +1,17 @@
 use std::str::FromStr;
 use std::sync::Arc;
 use anchor_client::{
-    solana_client::rpc_client::RpcClient,
-    solana_sdk::{
+    anchor_lang::system_program, solana_client::rpc_client::RpcClient, solana_sdk::{
         commitment_config::CommitmentConfig,
         native_token::LAMPORTS_PER_SOL,
         pubkey::Pubkey,
         signature::{read_keypair_file, Keypair},
         signer::Signer, system_instruction,
-    },
-    Client, Cluster
+    }, Client, Cluster
 };
 use anchor_spl::token::spl_token;
 use std::process::Command;
+use solrefer::{accounts, instruction};
 
 pub fn ensure_test_validator() -> RpcClient {
     let rpc_url = "http://localhost:8899";
@@ -236,4 +235,71 @@ pub fn mint_tokens(
         .send()
         .expect("Failed to mint tokens");
     println!("Minted tokens. Transaction signature: {}", tx);
+}
+
+/// Deposits SOL into a referral program
+pub fn deposit_sol(
+    amount: u64,
+    referral_program_pubkey: Pubkey,
+    authority: &Keypair,
+    client: &Client<Arc<Keypair>>,
+    program_id: Pubkey,
+    vault: Pubkey,
+) -> String {
+    let tx = client
+        .program(program_id)
+        .unwrap()
+        .request()
+        .accounts(accounts::DepositSol {
+            referral_program: referral_program_pubkey,
+            vault: vault,
+            authority: authority.pubkey(),
+            system_program: system_program::ID,
+        })
+        .args(instruction::DepositSol {
+            amount,
+        })
+        .signer(authority)
+        .send()
+        .expect("Failed to deposit SOL");
+
+    println!("Deposited {} SOL. Transaction signature: {}", 
+        amount as f64 / LAMPORTS_PER_SOL as f64, 
+        tx
+    );
+    tx.to_string()
+}
+
+/// Deposits tokens into a referral program
+pub fn deposit_tokens(
+    amount: u64,
+    referral_program_pubkey: Pubkey,
+    token_vault: Pubkey,
+    token_mint: Pubkey,
+    depositor_token_account: Pubkey,
+    authority: &Keypair,
+    client: &Client<Arc<Keypair>>,
+    program_id: Pubkey,
+) -> String {
+    let tx = client
+        .program(program_id)
+        .unwrap()
+        .request()
+        .accounts(accounts::DepositToken {
+            referral_program: referral_program_pubkey,
+            token_vault,
+            token_mint,
+            depositor_token_account,
+            authority: authority.pubkey(),
+            token_program: spl_token::id(),
+        })
+        .args(instruction::DepositToken {
+            amount,
+        })
+        .signer(authority)
+        .send()
+        .expect("Failed to deposit tokens");
+
+    println!("Deposited {} tokens. Transaction signature: {}", amount, tx);
+    tx.to_string()
 }

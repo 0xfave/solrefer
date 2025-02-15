@@ -7,7 +7,7 @@ use anchor_client::
 ;
 use solrefer::state::ReferralProgram;
 
-use crate::test_util::setup;
+use crate::test_util::{deposit_sol, setup};
 
 #[test]
 fn test_create_sol_referral_program() {
@@ -91,22 +91,7 @@ fn test_create_sol_referral_program() {
 
     // Test depositing SOL
     let deposit_amount = 500_000_000; // 0.5 SOL
-    let tx = client
-        .program(program_id)
-        .unwrap()
-        .request()
-        .accounts(solrefer::accounts::DepositSol {
-            referral_program: referral_program_pubkey,
-            vault,
-            authority: owner.pubkey(),
-            system_program: system_program::ID,
-        })
-        .args(solrefer::instruction::DepositSol {
-            amount: deposit_amount,
-        })
-        .signer(&owner)
-        .send()
-        .expect("Failed to deposit SOL");
+    let tx = deposit_sol(deposit_amount, referral_program_pubkey, &owner, &client, program_id, vault);
 
     println!("Deposited SOL. Transaction signature: {}", tx);
 

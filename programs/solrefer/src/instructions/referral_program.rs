@@ -274,7 +274,20 @@ pub fn set_eligibility_criteria(
     Ok(())
 }
 
-/// Accounts required for initializing the token vault.
+/// Accounts required for initializing the token vault for a referral program.
+///
+/// This struct defines the accounts and constraints required to initialize a PDA token account
+/// that will serve as the vault for storing deposited tokens in a token-based referral program.
+/// The vault is a Program Derived Address (PDA) with seeds ["token_vault", referral_program.key()].
+///
+/// Required accounts:
+/// - `referral_program`: The referral program account that must be active and token-based
+/// - `token_vault`: The PDA token account that will be initialized to store deposited tokens
+/// - `token_mint`: The mint of the token that matches the referral program's configuration
+/// - `authority`: The signer with authority over the referral program
+/// - `system_program`: Required for account creation
+/// - `token_program`: Required for token account initialization
+/// - `rent`: Required for rent-exempt account creation
 #[derive(Accounts)]
 pub struct InitializeTokenVault<'info> {
     #[account(
@@ -313,17 +326,34 @@ pub struct InitializeTokenVault<'info> {
 
 /// Initializes the token vault for a token-based referral program.
 ///
-/// This instruction creates and initializes the token vault account that will hold
-/// deposited tokens for the referral program. This must be called after creating
-/// a token-based referral program and before any token deposits can be made.
+/// This instruction is a crucial step in setting up a token-based referral program:
+/// 1. It must be called after creating a referral program with a token mint
+/// 2. It creates and initializes a PDA token account that will hold all deposited tokens
+/// 3. It must be completed before any token deposits can be made to the program
+///
+/// The initialization process:
+/// - Creates a new token account as a PDA (Program Derived Address)
+/// - Sets the referral program as the authority over the vault
+/// - Configures the vault to accept only the correct token type
 ///
 /// # Arguments
-/// * `ctx` - The context containing all required accounts
+/// * `ctx` - Contains all required accounts including:
+///   - The referral program that must be active and configured for tokens
+///   - The token vault PDA that will be initialized
+///   - The token mint that must match the program's configuration
+///   - The authority who must be the program's authority
 ///
 /// # Errors
 /// * `ProgramInactive` - If the referral program is not active
 /// * `InvalidAuthority` - If the signer is not the program authority
 /// * `InvalidTokenMint` - If the referral program is not configured for tokens
+///
+/// # Example Flow
+/// ```ignore
+/// 1. Create referral program with token_mint
+/// 2. Call initialize_token_vault to create the vault
+/// 3. Users can then deposit tokens to the program
+/// ```
 pub fn initialize_token_vault(ctx: Context<InitializeTokenVault>) -> Result<()> {
     msg!("Initialized token vault for referral program");
     Ok(())
