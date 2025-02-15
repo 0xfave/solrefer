@@ -1,10 +1,7 @@
-use anchor_client::{anchor_lang, 
-    solana_sdk::{
-        pubkey::Pubkey,
-        signer::Signer,
-        system_program,
-    }}
-;
+use anchor_client::{
+    anchor_lang,
+    solana_sdk::{pubkey::Pubkey, signer::Signer, system_program},
+};
 use anchor_spl::token::spl_token;
 use solrefer::state::ReferralProgram;
 
@@ -52,13 +49,13 @@ fn test_create_referral_program_with_token_mint() {
             locked_period,
             early_redemption_fee,
             mint_fee,
-            base_reward: 50_000_000, // 0.05 SOL base reward
-            tier1_threshold: 5, // 5 referrals for tier 1
-            tier1_reward: 75_000_000, // 0.075 SOL tier 1 reward
-            tier2_threshold: 10, // 10 referrals for tier 2
-            tier2_reward: 100_000_000, // 0.1 SOL tier 2 reward
+            base_reward: 50_000_000,       // 0.05 SOL base reward
+            tier1_threshold: 5,            // 5 referrals for tier 1
+            tier1_reward: 75_000_000,      // 0.075 SOL tier 1 reward
+            tier2_threshold: 10,           // 10 referrals for tier 2
+            tier2_reward: 100_000_000,     // 0.1 SOL tier 2 reward
             max_reward_cap: 1_000_000_000, // 1 SOL max rewards
-            revenue_share_percent: 500, // 5% revenue share
+            revenue_share_percent: 500,    // 5% revenue share
             required_token: None,
             min_token_amount: 0,
             program_end_time: None,
@@ -67,7 +64,10 @@ fn test_create_referral_program_with_token_mint() {
         .send()
         .expect("Failed to create token referral program");
 
-    println!("Created token referral program. Transaction signature: {}", tx);
+    println!(
+        "Created token referral program. Transaction signature: {}",
+        tx
+    );
 
     // Verify the created program
     let referral_program: ReferralProgram = client
@@ -114,12 +114,7 @@ fn test_create_referral_program_with_token_mint() {
     println!("Initialized token vault. Transaction signature: {}", tx);
 
     // Create token account for owner
-    let owner_token_account = create_token_account(
-        &owner,
-        &mint.pubkey(),
-        &client,
-        program_id,
-    );
+    let owner_token_account = create_token_account(&owner, &mint.pubkey(), &client, program_id);
 
     // Mint some tokens to owner's account
     let initial_token_amount = 10_000_000_000; // 10 tokens
@@ -134,7 +129,16 @@ fn test_create_referral_program_with_token_mint() {
 
     // Test depositing tokens
     let deposit_amount = 500_000_000; // 0.5 tokens
-    let tx = deposit_tokens(deposit_amount, referral_program_pubkey, token_vault, mint.pubkey(), owner_token_account, &owner, &client, program_id);
+    let tx = deposit_tokens(
+        deposit_amount,
+        referral_program_pubkey,
+        token_vault,
+        mint.pubkey(),
+        owner_token_account,
+        &owner,
+        &client,
+        program_id,
+    );
 
     println!("Deposited tokens. Transaction signature: {}", tx);
 
@@ -149,7 +153,10 @@ fn test_create_referral_program_with_token_mint() {
         .parse::<u64>()
         .unwrap();
 
-    assert_eq!(vault_balance, deposit_amount, "Token vault balance should match deposit amount");
+    assert_eq!(
+        vault_balance, deposit_amount,
+        "Token vault balance should match deposit amount"
+    );
 
     // Verify owner's token account balance was reduced
     let owner_balance = client

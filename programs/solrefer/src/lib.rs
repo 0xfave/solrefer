@@ -117,10 +117,7 @@ pub mod solrefer {
     /// * `InvalidAuthority` - If the signer is not the program authority
     /// * `InsufficientDeposit` - If the deposit amount is zero
     /// * `SolDepositToTokenProgram` - If attempting SOL deposit to a token program
-    pub fn deposit_sol(
-        ctx: Context<DepositSol>,
-        amount: u64,
-    ) -> Result<()> {
+    pub fn deposit_sol(ctx: Context<DepositSol>, amount: u64) -> Result<()> {
         instructions::deposit::deposit_sol(ctx, amount)
     }
 
@@ -147,10 +144,7 @@ pub mod solrefer {
     /// * `InvalidTokenAccounts` - If the token accounts are invalid
     /// * `InsufficientDeposit` - If the deposit amount is zero
     /// * `TokenDepositToSolProgram` - If attempting token deposit to a SOL program
-    pub fn deposit_token(
-        ctx: Context<DepositToken>,
-        amount: u64,
-    ) -> Result<()> {
+    pub fn deposit_token(ctx: Context<DepositToken>, amount: u64) -> Result<()> {
         instructions::deposit::deposit_token(ctx, amount)
     }
 }

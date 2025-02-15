@@ -1,12 +1,9 @@
+use crate::{error::ReferralError, state::referral_program::*};
 use anchor_lang::{
     prelude::*,
     system_program::{self, System, Transfer},
 };
-use crate::{
-    state::referral_program::*,
-    error::ReferralError,
-};
-use anchor_spl::token::{self, Token, TokenAccount, Mint};
+use anchor_spl::token::{self, Mint, Token, TokenAccount};
 
 /// The seed used for deriving the vault PDA that holds SOL deposits
 pub const VAULT_SEED: &[u8] = b"vault";
@@ -50,19 +47,16 @@ pub struct DepositSol<'info> {
 /// * `ProgramInactive` - If the referral program is not active
 /// * `InvalidAuthority` - If the signer is not the program authority
 /// * `InsufficientDeposit` - If the deposit amount is zero
-pub fn deposit_sol(
-    ctx: Context<DepositSol>,
-    amount: u64,
-) -> Result<()> {
+pub fn deposit_sol(ctx: Context<DepositSol>, amount: u64) -> Result<()> {
     require!(amount > 0, ReferralError::InsufficientDeposit);
-    
+
     let referral_program = &ctx.accounts.referral_program;
-    
+
     // Validate that the program is not a token program
     if referral_program.token_mint != Pubkey::default() {
         return err!(ReferralError::SolDepositToTokenProgram);
     }
-    
+
     // SOL deposit
     system_program::transfer(
         CpiContext::new(
@@ -134,19 +128,16 @@ pub struct DepositToken<'info> {
 /// * `InvalidTokenMint` - If the token mint doesn't match the program's configuration
 /// * `InvalidTokenAccounts` - If the token accounts are invalid
 /// * `InsufficientDeposit` - If the deposit amount is zero
-pub fn deposit_token(
-    ctx: Context<DepositToken>,
-    amount: u64,
-) -> Result<()> {
+pub fn deposit_token(ctx: Context<DepositToken>, amount: u64) -> Result<()> {
     require!(amount > 0, ReferralError::InsufficientDeposit);
-    
+
     let referral_program = &ctx.accounts.referral_program;
-    
+
     // Validate that the program is a token program
     if referral_program.token_mint == Pubkey::default() {
         return err!(ReferralError::TokenDepositToSolProgram);
     }
-    
+
     // Token deposit
     token::transfer(
         CpiContext::new(

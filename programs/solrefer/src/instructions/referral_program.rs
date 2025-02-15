@@ -1,9 +1,9 @@
-use anchor_lang::prelude::*;
-use anchor_spl::token::TokenAccount;
-use anchor_spl::token::{ Mint, Token };
-use crate::state::*;
 use crate::constants::*;
 use crate::error::*;
+use crate::state::*;
+use anchor_lang::prelude::*;
+use anchor_spl::token::TokenAccount;
+use anchor_spl::token::{Mint, Token};
 
 /// Accounts for creating a new referral program.
 ///
@@ -44,10 +44,10 @@ pub struct CreateReferralProgram<'info> {
         constraint = token_mint.map_or(true, |mint| mint == token_mint_info.key())
     )]
     pub token_mint_info: Option<Account<'info, Mint>>,
-    
+
     #[account(mut)]
     pub authority: Signer<'info>,
-    
+
     pub system_program: Program<'info, System>,
     pub token_program: Option<Program<'info, Token>>,
 }
@@ -105,7 +105,7 @@ pub fn create_referral_program(
         early_redemption_fee <= MAX_FEE_PERCENTAGE,
         ReferralError::InvalidFeeAmount
     );
-    
+
     // Validate eligibility parameters
     require!(
         base_reward >= MIN_REWARD_AMOUNT,
@@ -127,7 +127,7 @@ pub fn create_referral_program(
         revenue_share_percent <= MAX_FEE_PERCENTAGE,
         ReferralError::InvalidFeeAmount
     );
-    
+
     // Set up referral program
     let referral_program = &mut ctx.accounts.referral_program;
     referral_program.authority = ctx.accounts.authority.key();
@@ -142,7 +142,7 @@ pub fn create_referral_program(
     // Set up eligibility criteria
     let criteria = &mut ctx.accounts.eligibility_criteria;
     let clock = Clock::get()?;
-    
+
     criteria.base_reward = base_reward;
     criteria.tier1_threshold = tier1_threshold;
     criteria.tier1_reward = tier1_reward;
@@ -150,17 +150,20 @@ pub fn create_referral_program(
     criteria.tier2_reward = tier2_reward;
     criteria.max_reward_cap = max_reward_cap;
     criteria.revenue_share_percent = revenue_share_percent;
-    
+
     criteria.required_token = required_token;
     criteria.min_token_amount = min_token_amount;
-    
+
     criteria.program_start_time = clock.unix_timestamp;
     criteria.program_end_time = program_end_time;
-    
+
     criteria.is_active = true;
     criteria.last_updated = clock.unix_timestamp;
-    
-    msg!("Created referral program with authority: {:?}", referral_program.authority);
+
+    msg!(
+        "Created referral program with authority: {:?}",
+        referral_program.authority
+    );
     Ok(())
 }
 
@@ -178,16 +181,16 @@ pub struct SetEligibilityCriteria<'info> {
         bump
     )]
     pub eligibility_criteria: Account<'info, EligibilityCriteria>,
-    
+
     #[account(
         mut,
         constraint = referral_program.authority == authority.key()
     )]
     pub referral_program: Account<'info, ReferralProgram>,
-    
+
     #[account(mut)]
     pub authority: Signer<'info>,
-    
+
     pub system_program: Program<'info, System>,
 }
 
@@ -227,7 +230,7 @@ pub fn set_eligibility_criteria(
 ) -> Result<()> {
     let criteria = &mut ctx.accounts.eligibility_criteria;
     let clock = Clock::get()?;
-    
+
     // Validate parameters
     require!(
         base_reward >= MIN_REWARD_AMOUNT,
@@ -249,7 +252,7 @@ pub fn set_eligibility_criteria(
         revenue_share_percent <= MAX_FEE_PERCENTAGE,
         ReferralError::InvalidFeeAmount
     );
-    
+
     // Set reward structure
     criteria.base_reward = base_reward;
     criteria.tier1_threshold = tier1_threshold;
@@ -258,19 +261,19 @@ pub fn set_eligibility_criteria(
     criteria.tier2_reward = tier2_reward;
     criteria.max_reward_cap = max_reward_cap;
     criteria.revenue_share_percent = revenue_share_percent;
-    
+
     // Set requirements
     criteria.required_token = required_token;
     criteria.min_token_amount = min_token_amount;
-    
+
     // Set time parameters
     criteria.program_start_time = clock.unix_timestamp;
     criteria.program_end_time = program_end_time;
-    
+
     // Update status
     criteria.is_active = true;
     criteria.last_updated = clock.unix_timestamp;
-    
+
     Ok(())
 }
 
@@ -355,6 +358,9 @@ pub struct InitializeTokenVault<'info> {
 /// 3. Users can then deposit tokens to the program
 /// ```
 pub fn initialize_token_vault(ctx: Context<InitializeTokenVault>) -> Result<()> {
-    msg!("Initialized token vault for referral program {}", ctx.accounts.referral_program.key());
+    msg!(
+        "Initialized token vault for referral program {}",
+        ctx.accounts.referral_program.key()
+    );
     Ok(())
 }

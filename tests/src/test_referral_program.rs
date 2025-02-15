@@ -1,12 +1,10 @@
-use anchor_client::
-    solana_sdk::{
-        pubkey::Pubkey, signer::Signer
-    }
-;
+use anchor_client::solana_sdk::{pubkey::Pubkey, signer::Signer};
 use anchor_spl::token::spl_token;
 use solrefer::state::ReferralProgram;
 
-use crate::test_util::{create_mint, create_sol_referral_program, create_token_account, deposit_sol, mint_tokens, setup};
+use crate::test_util::{
+    create_mint, create_sol_referral_program, create_token_account, deposit_sol, mint_tokens, setup,
+};
 
 #[test]
 fn test_create_sol_referral_program() {
@@ -23,20 +21,20 @@ fn test_create_sol_referral_program() {
         &owner,
         &client,
         program_id,
-        1_000_000,      // 0.001 SOL fixed reward
-        locked_period,             // 1 minute locked period
-        early_redemption_fee,           // 25% early redemption fee in basis points
-        mint_fee,       // 10% mint fee in basis points
-        50_000_000,     // 0.05 SOL base reward
-        5,              // 5 referrals for tier 1
-        75_000_000,     // 0.075 SOL tier1 reward (> base_reward)
-        10,             // 10 referrals for tier 2
-        100_000_000,    // 0.1 SOL tier2 reward (> tier1_reward)
-        1_000_000_000,  // 1 SOL max reward cap
-        500,            // 5% revenue share
-        None,           // No required token
-        0,              // No min token amount
-        None,           // No end time
+        1_000_000,            // 0.001 SOL fixed reward
+        locked_period,        // 1 minute locked period
+        early_redemption_fee, // 25% early redemption fee in basis points
+        mint_fee,             // 10% mint fee in basis points
+        50_000_000,           // 0.05 SOL base reward
+        5,                    // 5 referrals for tier 1
+        75_000_000,           // 0.075 SOL tier1 reward (> base_reward)
+        10,                   // 10 referrals for tier 2
+        100_000_000,          // 0.1 SOL tier2 reward (> tier1_reward)
+        1_000_000_000,        // 1 SOL max reward cap
+        500,                  // 5% revenue share
+        None,                 // No required token
+        0,                    // No min token amount
+        None,                 // No end time
     );
 
     // Verify the created program
@@ -57,14 +55,19 @@ fn test_create_sol_referral_program() {
     assert!(referral_program.is_active);
 
     // Find PDA for vault
-    let (vault, _) = Pubkey::find_program_address(
-        &[b"vault", referral_program_pubkey.as_ref()],
-        &program_id,
-    );
+    let (vault, _) =
+        Pubkey::find_program_address(&[b"vault", referral_program_pubkey.as_ref()], &program_id);
 
     // Test depositing SOL
     let deposit_amount = 500_000_000; // 0.5 SOL
-    let tx = deposit_sol(deposit_amount, referral_program_pubkey, &owner, &client, program_id, vault);
+    let tx = deposit_sol(
+        deposit_amount,
+        referral_program_pubkey,
+        &owner,
+        &client,
+        program_id,
+        vault,
+    );
 
     println!("Deposited SOL. Transaction signature: {}", tx);
 
@@ -76,7 +79,10 @@ fn test_create_sol_referral_program() {
         .get_balance(&vault)
         .expect("Failed to get vault balance");
 
-    assert_eq!(vault_balance, deposit_amount, "Vault balance should match deposit amount");
+    assert_eq!(
+        vault_balance, deposit_amount,
+        "Vault balance should match deposit amount"
+    );
 }
 
 #[test]
@@ -89,30 +95,25 @@ fn test_sol_referral_program_not_sol_deposit() {
         &owner,
         &client,
         program_id,
-        1_000_000,      // 0.001 SOL fixed reward
-        60,             // 1 minute locked period
-        2500,           // 25% early redemption fee in basis points
-        1000,           // 10% mint fee in basis points
-        50_000_000,     // 0.05 SOL base reward
-        5,              // 5 referrals for tier 1
-        75_000_000,     // 0.075 SOL tier1 reward (> base_reward)
-        10,             // 10 referrals for tier 2
-        100_000_000,    // 0.1 SOL tier2 reward (> tier1_reward)
-        1_000_000_000,  // 1 SOL max reward cap
-        500,            // 5% revenue share
-        None,           // No required token
-        0,              // No min token amount
-        None,           // No end time
+        1_000_000,     // 0.001 SOL fixed reward
+        60,            // 1 minute locked period
+        2500,          // 25% early redemption fee in basis points
+        1000,          // 10% mint fee in basis points
+        50_000_000,    // 0.05 SOL base reward
+        5,             // 5 referrals for tier 1
+        75_000_000,    // 0.075 SOL tier1 reward (> base_reward)
+        10,            // 10 referrals for tier 2
+        100_000_000,   // 0.1 SOL tier2 reward (> tier1_reward)
+        1_000_000_000, // 1 SOL max reward cap
+        500,           // 5% revenue share
+        None,          // No required token
+        0,             // No min token amount
+        None,          // No end time
     );
 
     // Create a token mint and account to test invalid deposits
     let mint = create_mint(&owner, &client, program_id);
-    let owner_token_account = create_token_account(
-        &owner,
-        &mint.pubkey(),
-        &client,
-        program_id,
-    );
+    let owner_token_account = create_token_account(&owner, &mint.pubkey(), &client, program_id);
     mint_tokens(
         &mint,
         &owner_token_account,
@@ -134,7 +135,7 @@ fn test_sol_referral_program_not_sol_deposit() {
         )
     });
     assert!(result.is_err(), "Should fail when depositing 0 SOL");
-    
+
     // Test case 2: Try to deposit tokens to SOL program (should fail)
     // This will trigger the TokenDepositToSolProgram error
     let _ = client
@@ -149,9 +150,7 @@ fn test_sol_referral_program_not_sol_deposit() {
             authority: owner.pubkey(),
             token_program: spl_token::id(),
         })
-        .args(solrefer::instruction::DepositToken {
-            amount: 1_000_000,
-        })
+        .args(solrefer::instruction::DepositToken { amount: 1_000_000 })
         .signer(&owner)
         .send()
         .expect("Transaction failed but not with TokenDepositToSolProgram error");

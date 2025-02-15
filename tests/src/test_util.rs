@@ -1,17 +1,21 @@
-use std::str::FromStr;
-use std::sync::Arc;
 use anchor_client::{
-    anchor_lang::system_program, solana_client::rpc_client::RpcClient, solana_sdk::{
+    anchor_lang::system_program,
+    solana_client::rpc_client::RpcClient,
+    solana_sdk::{
         commitment_config::CommitmentConfig,
         native_token::LAMPORTS_PER_SOL,
         pubkey::Pubkey,
         signature::{read_keypair_file, Keypair},
-        signer::Signer, system_instruction,
-    }, Client, Cluster
+        signer::Signer,
+        system_instruction,
+    },
+    Client, Cluster,
 };
 use anchor_spl::token::spl_token;
-use std::process::Command;
 use solrefer::{accounts, instruction};
+use std::process::Command;
+use std::str::FromStr;
+use std::sync::Arc;
 
 pub fn ensure_test_validator() -> RpcClient {
     let rpc_url = "http://localhost:8899";
@@ -50,7 +54,11 @@ pub fn ensure_test_validator() -> RpcClient {
     rpc_client
 }
 
-pub fn request_airdrop_with_retries(rpc_client: &RpcClient, pubkey: &Pubkey, amount: u64) -> Result<(), String> {
+pub fn request_airdrop_with_retries(
+    rpc_client: &RpcClient,
+    pubkey: &Pubkey,
+    amount: u64,
+) -> Result<(), String> {
     let max_retries = 5;
     let mut current_try = 0;
 
@@ -70,7 +78,10 @@ pub fn request_airdrop_with_retries(rpc_client: &RpcClient, pubkey: &Pubkey, amo
                     std::thread::sleep(std::time::Duration::from_secs(1));
                     if let Ok(balance) = rpc_client.get_balance(pubkey) {
                         if balance >= amount {
-                            println!("Successfully airdropped {} SOL", amount as f64 / LAMPORTS_PER_SOL as f64);
+                            println!(
+                                "Successfully airdropped {} SOL",
+                                amount as f64 / LAMPORTS_PER_SOL as f64
+                            );
                             return Ok(());
                         }
                     }
@@ -80,7 +91,11 @@ pub fn request_airdrop_with_retries(rpc_client: &RpcClient, pubkey: &Pubkey, amo
         }
         current_try += 1;
         if current_try < max_retries {
-            println!("Retrying airdrop... (attempt {}/{})", current_try + 1, max_retries);
+            println!(
+                "Retrying airdrop... (attempt {}/{})",
+                current_try + 1,
+                max_retries
+            );
             std::thread::sleep(std::time::Duration::from_secs(2));
         }
     }
@@ -95,7 +110,7 @@ pub fn setup() -> (Keypair, Keypair, Keypair, Pubkey, Client<Arc<Keypair>>) {
     let client = Client::new_with_options(
         Cluster::Localnet,
         payer.clone(),
-        CommitmentConfig::confirmed()
+        CommitmentConfig::confirmed(),
     );
     let program_id = Pubkey::from_str(program_id).unwrap();
 
@@ -106,7 +121,7 @@ pub fn setup() -> (Keypair, Keypair, Keypair, Pubkey, Client<Arc<Keypair>>) {
 
     // Ensure validator is running and get client
     let rpc_client = ensure_test_validator();
-    
+
     // Fund accounts with smaller amounts and multiple retries
     let fund_amount = LAMPORTS_PER_SOL * 2;
     for (name, kp) in [("owner", &owner), ("alice", &alice), ("bob", &bob)] {
@@ -123,10 +138,12 @@ pub fn create_mint(owner: &Keypair, client: &Client<Arc<Keypair>>, program_id: P
     // Create new token mint
     let mint = Keypair::new();
     let mint_authority = &owner;
-    
+
     // Create mint account
     let rpc_client = client.program(program_id).unwrap().rpc();
-    let rent = rpc_client.get_minimum_balance_for_rent_exemption(82).unwrap();
+    let rent = rpc_client
+        .get_minimum_balance_for_rent_exemption(82)
+        .unwrap();
     let ix = system_instruction::create_account(
         &owner.pubkey(),
         &mint.pubkey(),
@@ -134,7 +151,7 @@ pub fn create_mint(owner: &Keypair, client: &Client<Arc<Keypair>>, program_id: P
         82,
         &spl_token::id(),
     );
-    
+
     let tx = client
         .program(program_id)
         .unwrap()
@@ -153,7 +170,8 @@ pub fn create_mint(owner: &Keypair, client: &Client<Arc<Keypair>>, program_id: P
         &mint_authority.pubkey(),
         Some(&mint_authority.pubkey()),
         9,
-    ).unwrap();
+    )
+    .unwrap();
 
     let tx = client
         .program(program_id)
@@ -174,11 +192,13 @@ pub fn create_token_account(
     program_id: Pubkey,
 ) -> Pubkey {
     let rpc_client = client.program(program_id).unwrap().rpc();
-    
+
     // Create token account
     let account = Keypair::new();
-    let rent = rpc_client.get_minimum_balance_for_rent_exemption(165).unwrap();
-    
+    let rent = rpc_client
+        .get_minimum_balance_for_rent_exemption(165)
+        .unwrap();
+
     let create_account_ix = system_instruction::create_account(
         &owner.pubkey(),
         &account.pubkey(),
@@ -186,14 +206,15 @@ pub fn create_token_account(
         165,
         &spl_token::id(),
     );
-    
+
     let init_account_ix = spl_token::instruction::initialize_account(
         &spl_token::id(),
         &account.pubkey(),
         mint,
         &owner.pubkey(),
-    ).unwrap();
-    
+    )
+    .unwrap();
+
     let tx = client
         .program(program_id)
         .unwrap()
@@ -205,7 +226,7 @@ pub fn create_token_account(
         .send()
         .expect("Failed to create token account");
     println!("Created token account. Transaction signature: {}", tx);
-    
+
     account.pubkey()
 }
 
@@ -224,8 +245,9 @@ pub fn mint_tokens(
         &owner.pubkey(),
         &[&owner.pubkey()],
         amount,
-    ).unwrap();
-    
+    )
+    .unwrap();
+
     let tx = client
         .program(program_id)
         .unwrap()
@@ -256,15 +278,14 @@ pub fn deposit_sol(
             authority: authority.pubkey(),
             system_program: system_program::ID,
         })
-        .args(instruction::DepositSol {
-            amount,
-        })
+        .args(instruction::DepositSol { amount })
         .signer(authority)
         .send()
         .expect("Failed to deposit SOL");
 
-    println!("Deposited {} SOL. Transaction signature: {}", 
-        amount as f64 / LAMPORTS_PER_SOL as f64, 
+    println!(
+        "Deposited {} SOL. Transaction signature: {}",
+        amount as f64 / LAMPORTS_PER_SOL as f64,
         tx
     );
     tx.to_string()
@@ -293,9 +314,7 @@ pub fn deposit_tokens(
             authority: authority.pubkey(),
             token_program: spl_token::id(),
         })
-        .args(instruction::DepositToken {
-            amount,
-        })
+        .args(instruction::DepositToken { amount })
         .signer(authority)
         .send()
         .expect("Failed to deposit tokens");
@@ -325,15 +344,11 @@ pub fn create_sol_referral_program(
     program_end_time: Option<i64>,
 ) -> (Pubkey, Pubkey) {
     // Find the PDA for referral program
-    let (referral_program, _) = Pubkey::find_program_address(
-        &[b"referral_program", owner.pubkey().as_ref()],
-        &program_id,
-    );
+    let (referral_program, _) =
+        Pubkey::find_program_address(&[b"referral_program", owner.pubkey().as_ref()], &program_id);
 
-    let (vault, _) = Pubkey::find_program_address(
-        &[b"vault", referral_program.as_ref()],
-        &program_id,
-    );
+    let (vault, _) =
+        Pubkey::find_program_address(&[b"vault", referral_program.as_ref()], &program_id);
 
     let tx = client
         .program(program_id)
@@ -368,7 +383,10 @@ pub fn create_sol_referral_program(
         .send()
         .expect("Failed to create SOL referral program");
 
-    println!("Created SOL referral program. Transaction signature: {}", tx);
+    println!(
+        "Created SOL referral program. Transaction signature: {}",
+        tx
+    );
     (referral_program, vault)
 }
 
