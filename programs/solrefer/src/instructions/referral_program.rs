@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token::TokenAccount;
 use anchor_spl::token::{ Mint, Token };
 use crate::state::*;
 use crate::constants::*;
@@ -270,5 +271,60 @@ pub fn set_eligibility_criteria(
     criteria.is_active = true;
     criteria.last_updated = clock.unix_timestamp;
     
+    Ok(())
+}
+
+/// Accounts required for initializing the token vault.
+#[derive(Accounts)]
+pub struct InitializeTokenVault<'info> {
+    #[account(
+        mut,
+        constraint = referral_program.is_active @ ReferralError::ProgramInactive,
+        has_one = authority @ ReferralError::InvalidAuthority,
+        constraint = referral_program.token_mint != Pubkey::default() @ ReferralError::InvalidTokenMint,
+    )]
+    pub referral_program: Account<'info, ReferralProgram>,
+
+    /// Token account vault that will hold deposited tokens
+    /// PDA with seeds: ["token_vault", referral_program.key()]
+    #[account(
+        init,
+        payer = authority,
+        seeds = [b"token_vault", referral_program.key().as_ref()],
+        bump,
+        token::mint = token_mint,
+        token::authority = referral_program,
+    )]
+    pub token_vault: Account<'info, TokenAccount>,
+
+    /// The mint of the token for deposits
+    #[account(
+        constraint = token_mint.key() == referral_program.token_mint @ ReferralError::InvalidTokenMint
+    )]
+    pub token_mint: Account<'info, Mint>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+/// Initializes the token vault for a token-based referral program.
+///
+/// This instruction creates and initializes the token vault account that will hold
+/// deposited tokens for the referral program. This must be called after creating
+/// a token-based referral program and before any token deposits can be made.
+///
+/// # Arguments
+/// * `ctx` - The context containing all required accounts
+///
+/// # Errors
+/// * `ProgramInactive` - If the referral program is not active
+/// * `InvalidAuthority` - If the signer is not the program authority
+/// * `InvalidTokenMint` - If the referral program is not configured for tokens
+pub fn initialize_token_vault(ctx: Context<InitializeTokenVault>) -> Result<()> {
+    msg!("Initialized token vault for referral program");
     Ok(())
 }

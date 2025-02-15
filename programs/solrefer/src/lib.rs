@@ -75,6 +75,30 @@ pub mod solrefer {
         )
     }
 
+    /// Initializes the token vault for a token-based referral program.
+    ///
+    /// This instruction creates and initializes the token vault account that will hold
+    /// deposited tokens for the referral program. This must be called after creating
+    /// a token-based referral program and before any token deposits can be made.
+    ///
+    /// # Arguments
+    /// * `ctx` - The context containing:
+    ///   - referral_program: The program account (must be active)
+    ///   - token_vault: The token vault PDA to initialize
+    ///   - token_mint: The token mint (must match program config)
+    ///   - authority: The program authority (signer)
+    ///   - system_program: The system program
+    ///   - token_program: The token program
+    ///   - rent: The rent sysvar
+    ///
+    /// # Errors
+    /// * `ProgramInactive` - If the referral program is not active
+    /// * `InvalidAuthority` - If the signer is not the program authority
+    /// * `InvalidTokenMint` - If the referral program is not configured for tokens
+    pub fn initialize_token_vault(ctx: Context<InitializeTokenVault>) -> Result<()> {
+        instructions::referral_program::initialize_token_vault(ctx)
+    }
+
     /// Deposits SOL into the referral program's vault.
     ///
     /// This instruction allows the program authority to deposit SOL that will be used

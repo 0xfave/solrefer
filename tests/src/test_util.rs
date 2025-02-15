@@ -167,3 +167,73 @@ pub fn create_mint(owner: &Keypair, client: &Client<Arc<Keypair>>, program_id: P
 
     mint
 }
+
+pub fn create_token_account(
+    owner: &Keypair,
+    mint: &Pubkey,
+    client: &Client<Arc<Keypair>>,
+    program_id: Pubkey,
+) -> Pubkey {
+    let rpc_client = client.program(program_id).unwrap().rpc();
+    
+    // Create token account
+    let account = Keypair::new();
+    let rent = rpc_client.get_minimum_balance_for_rent_exemption(165).unwrap();
+    
+    let create_account_ix = system_instruction::create_account(
+        &owner.pubkey(),
+        &account.pubkey(),
+        rent,
+        165,
+        &spl_token::id(),
+    );
+    
+    let init_account_ix = spl_token::instruction::initialize_account(
+        &spl_token::id(),
+        &account.pubkey(),
+        mint,
+        &owner.pubkey(),
+    ).unwrap();
+    
+    let tx = client
+        .program(program_id)
+        .unwrap()
+        .request()
+        .instruction(create_account_ix)
+        .instruction(init_account_ix)
+        .signer(&owner)
+        .signer(&account)
+        .send()
+        .expect("Failed to create token account");
+    println!("Created token account. Transaction signature: {}", tx);
+    
+    account.pubkey()
+}
+
+pub fn mint_tokens(
+    mint: &Keypair,
+    token_account: &Pubkey,
+    owner: &Keypair,
+    amount: u64,
+    client: &Client<Arc<Keypair>>,
+    program_id: Pubkey,
+) {
+    let ix = spl_token::instruction::mint_to(
+        &spl_token::id(),
+        &mint.pubkey(),
+        token_account,
+        &owner.pubkey(),
+        &[&owner.pubkey()],
+        amount,
+    ).unwrap();
+    
+    let tx = client
+        .program(program_id)
+        .unwrap()
+        .request()
+        .instruction(ix)
+        .signer(&owner)
+        .send()
+        .expect("Failed to mint tokens");
+    println!("Minted tokens. Transaction signature: {}", tx);
+}

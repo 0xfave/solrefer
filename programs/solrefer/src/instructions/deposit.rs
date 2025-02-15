@@ -97,7 +97,6 @@ pub struct DepositToken<'info> {
         bump,
         token::mint = token_mint,
         token::authority = referral_program,
-        constraint = token_vault.owner == token_program.key() @ ReferralError::InvalidTokenProgram,
     )]
     pub token_vault: Account<'info, TokenAccount>,
 
@@ -110,9 +109,8 @@ pub struct DepositToken<'info> {
     /// The depositor's token account
     #[account(
         mut,
-        constraint = depositor_token_account.owner == authority.key() &&
-                     depositor_token_account.mint == token_mint.key() &&
-                     depositor_token_account.owner == token_program.key() @ ReferralError::InvalidTokenAccounts
+        constraint = depositor_token_account.mint == token_mint.key() &&
+                     depositor_token_account.owner == authority.key() @ ReferralError::InvalidTokenAccounts
     )]
     pub depositor_token_account: Account<'info, TokenAccount>,
 
