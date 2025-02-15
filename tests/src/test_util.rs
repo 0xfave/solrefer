@@ -303,3 +303,80 @@ pub fn deposit_tokens(
     println!("Deposited {} tokens. Transaction signature: {}", amount, tx);
     tx.to_string()
 }
+
+// Helper function to create a SOL referral program for tests
+pub fn create_sol_referral_program(
+    owner: &Keypair,
+    client: &Client<Arc<Keypair>>,
+    program_id: Pubkey,
+    fixed_reward_amount: u64,
+    locked_period: i64,
+    early_redemption_fee: u64,
+    mint_fee: u64,
+    base_reward: u64,
+    tier1_threshold: u64,
+    tier1_reward: u64,
+    tier2_threshold: u64,
+    tier2_reward: u64,
+    max_reward_cap: u64,
+    revenue_share_percent: u64,
+    required_token: Option<Pubkey>,
+    min_token_amount: u64,
+    program_end_time: Option<i64>,
+) -> (Pubkey, Pubkey) {
+    // Find the PDA for referral program
+    let (referral_program, _) = Pubkey::find_program_address(
+        &[b"referral_program", owner.pubkey().as_ref()],
+        &program_id,
+    );
+
+    let (vault, _) = Pubkey::find_program_address(
+        &[b"vault", referral_program.as_ref()],
+        &program_id,
+    );
+
+    let tx = client
+        .program(program_id)
+        .unwrap()
+        .request()
+        .accounts(solrefer::accounts::CreateReferralProgram {
+            referral_program,
+            eligibility_criteria: get_eligibility_criteria_pda(referral_program, program_id),
+            authority: owner.pubkey(),
+            token_mint_info: None,
+            token_program: None,
+            system_program: system_program::ID,
+        })
+        .args(solrefer::instruction::CreateReferralProgram {
+            token_mint: None,
+            fixed_reward_amount,
+            locked_period,
+            early_redemption_fee,
+            mint_fee,
+            base_reward,
+            tier1_threshold,
+            tier1_reward,
+            tier2_threshold,
+            tier2_reward,
+            max_reward_cap,
+            revenue_share_percent,
+            required_token,
+            min_token_amount,
+            program_end_time,
+        })
+        .signer(&owner)
+        .send()
+        .expect("Failed to create SOL referral program");
+
+    println!("Created SOL referral program. Transaction signature: {}", tx);
+    (referral_program, vault)
+}
+
+// Helper function to get eligibility criteria PDA
+pub fn get_eligibility_criteria_pda(referral_program: Pubkey, program_id: Pubkey) -> Pubkey {
+    let (pda, _) = Pubkey::find_program_address(
+        &[b"eligibility_criteria", referral_program.as_ref()],
+        &program_id,
+    );
+    pda
+}

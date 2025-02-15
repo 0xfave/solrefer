@@ -355,6 +355,6 @@ pub struct InitializeTokenVault<'info> {
 /// 3. Users can then deposit tokens to the program
 /// ```
 pub fn initialize_token_vault(ctx: Context<InitializeTokenVault>) -> Result<()> {
-    msg!("Initialized token vault for referral program");
+    msg!("Initialized token vault for referral program {}", ctx.accounts.referral_program.key());
     Ok(())
 }
