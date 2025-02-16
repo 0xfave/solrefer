@@ -13,28 +13,25 @@ use anchor_client::{
 };
 use anchor_spl::token::spl_token;
 use solrefer::{accounts, instruction};
-use std::process::Command;
-use std::str::FromStr;
-use std::sync::Arc;
+use std::{process::Command, str::FromStr, sync::Arc};
 
 pub fn ensure_test_validator() -> RpcClient {
     let rpc_url = "http://localhost:8899";
     let rpc_client = RpcClient::new(rpc_url);
 
     // Try to connect to validator
-    if let Err(_) = rpc_client.get_version() {
+    if rpc_client.get_version().is_err() {
         println!("No validator detected, attempting to start one...");
         // Kill any existing validator process
-        Command::new("pkill")
-            .args(&["-f", "solana-test-validator"])
-            .output()
-            .ok();
+        Command::new("pkill").args(["-f", "solana-test-validator"]).output().ok();
 
         // Start new validator
         Command::new("solana-test-validator")
             .arg("--quiet")
             .spawn()
-            .expect("Failed to start validator");
+            .expect("Failed to start validator")
+            .wait()
+            .expect("Failed to wait for validator");
 
         // Wait for validator to start
         let mut attempts = 0;
@@ -54,11 +51,7 @@ pub fn ensure_test_validator() -> RpcClient {
     rpc_client
 }
 
-pub fn request_airdrop_with_retries(
-    rpc_client: &RpcClient,
-    pubkey: &Pubkey,
-    amount: u64,
-) -> Result<(), String> {
+pub fn request_airdrop_with_retries(rpc_client: &RpcClient, pubkey: &Pubkey, amount: u64) -> Result<(), String> {
     let max_retries = 5;
     let mut current_try = 0;
 
@@ -78,10 +71,7 @@ pub fn request_airdrop_with_retries(
                     std::thread::sleep(std::time::Duration::from_secs(1));
                     if let Ok(balance) = rpc_client.get_balance(pubkey) {
                         if balance >= amount {
-                            println!(
-                                "Successfully airdropped {} SOL",
-                                amount as f64 / LAMPORTS_PER_SOL as f64
-                            );
+                            println!("Successfully airdropped {} SOL", amount as f64 / LAMPORTS_PER_SOL as f64);
                             return Ok(());
                         }
                     }
@@ -91,11 +81,7 @@ pub fn request_airdrop_with_retries(
         }
         current_try += 1;
         if current_try < max_retries {
-            println!(
-                "Retrying airdrop... (attempt {}/{})",
-                current_try + 1,
-                max_retries
-            );
+            println!("Retrying airdrop... (attempt {}/{})", current_try + 1, max_retries);
             std::thread::sleep(std::time::Duration::from_secs(2));
         }
     }
@@ -107,11 +93,7 @@ pub fn setup() -> (Keypair, Keypair, Keypair, Pubkey, Client<Arc<Keypair>>) {
     let anchor_wallet = std::env::var("ANCHOR_WALLET").unwrap();
     let payer = Arc::new(read_keypair_file(&anchor_wallet).unwrap());
 
-    let client = Client::new_with_options(
-        Cluster::Localnet,
-        payer.clone(),
-        CommitmentConfig::confirmed(),
-    );
+    let client = Client::new_with_options(Cluster::Localnet, payer.clone(), CommitmentConfig::confirmed());
     let program_id = Pubkey::from_str(program_id).unwrap();
 
     // Create wallets for owner, alice and bob
@@ -137,27 +119,19 @@ pub fn setup() -> (Keypair, Keypair, Keypair, Pubkey, Client<Arc<Keypair>>) {
 pub fn create_mint(owner: &Keypair, client: &Client<Arc<Keypair>>, program_id: Pubkey) -> Keypair {
     // Create new token mint
     let mint = Keypair::new();
-    let mint_authority = &owner;
+    let mint_authority = owner;
 
     // Create mint account
     let rpc_client = client.program(program_id).unwrap().rpc();
-    let rent = rpc_client
-        .get_minimum_balance_for_rent_exemption(82)
-        .unwrap();
-    let ix = system_instruction::create_account(
-        &owner.pubkey(),
-        &mint.pubkey(),
-        rent,
-        82,
-        &spl_token::id(),
-    );
+    let rent = rpc_client.get_minimum_balance_for_rent_exemption(82).unwrap();
+    let ix = system_instruction::create_account(&owner.pubkey(), &mint.pubkey(), rent, 82, &spl_token::id());
 
     let tx = client
         .program(program_id)
         .unwrap()
         .request()
         .instruction(ix)
-        .signer(&owner)
+        .signer(owner)
         .signer(&mint)
         .send()
         .expect("Failed to create mint account");
@@ -173,13 +147,7 @@ pub fn create_mint(owner: &Keypair, client: &Client<Arc<Keypair>>, program_id: P
     )
     .unwrap();
 
-    let tx = client
-        .program(program_id)
-        .unwrap()
-        .request()
-        .instruction(ix)
-        .send()
-        .expect("Failed to initialize mint");
+    let tx = client.program(program_id).unwrap().request().instruction(ix).send().expect("Failed to initialize mint");
     println!("Initialized mint. Transaction signature: {}", tx);
 
     mint
@@ -195,25 +163,13 @@ pub fn create_token_account(
 
     // Create token account
     let account = Keypair::new();
-    let rent = rpc_client
-        .get_minimum_balance_for_rent_exemption(165)
-        .unwrap();
+    let rent = rpc_client.get_minimum_balance_for_rent_exemption(165).unwrap();
 
-    let create_account_ix = system_instruction::create_account(
-        &owner.pubkey(),
-        &account.pubkey(),
-        rent,
-        165,
-        &spl_token::id(),
-    );
+    let create_account_ix =
+        system_instruction::create_account(&owner.pubkey(), &account.pubkey(), rent, 165, &spl_token::id());
 
-    let init_account_ix = spl_token::instruction::initialize_account(
-        &spl_token::id(),
-        &account.pubkey(),
-        mint,
-        &owner.pubkey(),
-    )
-    .unwrap();
+    let init_account_ix =
+        spl_token::instruction::initialize_account(&spl_token::id(), &account.pubkey(), mint, &owner.pubkey()).unwrap();
 
     let tx = client
         .program(program_id)
@@ -221,7 +177,7 @@ pub fn create_token_account(
         .request()
         .instruction(create_account_ix)
         .instruction(init_account_ix)
-        .signer(&owner)
+        .signer(owner)
         .signer(&account)
         .send()
         .expect("Failed to create token account");
@@ -253,7 +209,7 @@ pub fn mint_tokens(
         .unwrap()
         .request()
         .instruction(ix)
-        .signer(&owner)
+        .signer(owner)
         .send()
         .expect("Failed to mint tokens");
     println!("Minted tokens. Transaction signature: {}", tx);
@@ -274,7 +230,7 @@ pub fn deposit_sol(
         .request()
         .accounts(accounts::DepositSol {
             referral_program: referral_program_pubkey,
-            vault: vault,
+            vault,
             authority: authority.pubkey(),
             system_program: system_program::ID,
         })
@@ -283,14 +239,11 @@ pub fn deposit_sol(
         .send()
         .expect("Failed to deposit SOL");
 
-    println!(
-        "Deposited {} SOL. Transaction signature: {}",
-        amount as f64 / LAMPORTS_PER_SOL as f64,
-        tx
-    );
+    println!("Deposited {} SOL. Transaction signature: {}", amount as f64 / LAMPORTS_PER_SOL as f64, tx);
     tx.to_string()
 }
 
+#[allow(clippy::too_many_arguments)]
 /// Deposits tokens into a referral program
 pub fn deposit_tokens(
     amount: u64,
@@ -324,6 +277,7 @@ pub fn deposit_tokens(
 }
 
 // Helper function to create a SOL referral program for tests
+#[allow(clippy::too_many_arguments)]
 pub fn create_sol_referral_program(
     owner: &Keypair,
     client: &Client<Arc<Keypair>>,
@@ -347,8 +301,7 @@ pub fn create_sol_referral_program(
     let (referral_program, _) =
         Pubkey::find_program_address(&[b"referral_program", owner.pubkey().as_ref()], &program_id);
 
-    let (vault, _) =
-        Pubkey::find_program_address(&[b"vault", referral_program.as_ref()], &program_id);
+    let (vault, _) = Pubkey::find_program_address(&[b"vault", referral_program.as_ref()], &program_id);
 
     let tx = client
         .program(program_id)
@@ -379,22 +332,16 @@ pub fn create_sol_referral_program(
             min_token_amount,
             program_end_time,
         })
-        .signer(&owner)
+        .signer(owner)
         .send()
         .expect("Failed to create SOL referral program");
 
-    println!(
-        "Created SOL referral program. Transaction signature: {}",
-        tx
-    );
+    println!("Created SOL referral program. Transaction signature: {}", tx);
     (referral_program, vault)
 }
 
 // Helper function to get eligibility criteria PDA
 pub fn get_eligibility_criteria_pda(referral_program: Pubkey, program_id: Pubkey) -> Pubkey {
-    let (pda, _) = Pubkey::find_program_address(
-        &[b"eligibility_criteria", referral_program.as_ref()],
-        &program_id,
-    );
+    let (pda, _) = Pubkey::find_program_address(&[b"eligibility_criteria", referral_program.as_ref()], &program_id);
     pda
 }

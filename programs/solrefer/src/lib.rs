@@ -37,6 +37,7 @@ pub mod solrefer {
     /// * `required_token` - The optional token required to participate in the referral program.
     /// * `min_token_amount` - The minimum token amount required to participate.
     /// * `program_end_time` - The optional end time for the referral program.
+    #[allow(clippy::too_many_arguments)]
     pub fn create_referral_program(
         ctx: Context<CreateReferralProgram>,
         token_mint: Option<Pubkey>,

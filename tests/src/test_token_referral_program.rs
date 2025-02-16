@@ -25,10 +25,8 @@ fn test_create_referral_program_with_token_mint() {
     let (referral_program_pubkey, _) = Pubkey::find_program_address(&seeds, &program_id);
 
     // Find PDA for eligibility criteria
-    let (eligibility_criteria, _bump) = Pubkey::find_program_address(
-        &[b"eligibility_criteria", referral_program_pubkey.as_ref()],
-        &program_id,
-    );
+    let (eligibility_criteria, _bump) =
+        Pubkey::find_program_address(&[b"eligibility_criteria", referral_program_pubkey.as_ref()], &program_id);
 
     // Create token referral program
     let tx = client
@@ -64,10 +62,7 @@ fn test_create_referral_program_with_token_mint() {
         .send()
         .expect("Failed to create token referral program");
 
-    println!(
-        "Created token referral program. Transaction signature: {}",
-        tx
-    );
+    println!("Created token referral program. Transaction signature: {}", tx);
 
     // Verify the created program
     let referral_program: ReferralProgram = client
@@ -87,10 +82,8 @@ fn test_create_referral_program_with_token_mint() {
     assert!(referral_program.is_active);
 
     // Find PDA for token vault
-    let (token_vault, _) = Pubkey::find_program_address(
-        &[b"token_vault", referral_program_pubkey.as_ref()],
-        &program_id,
-    );
+    let (token_vault, _) =
+        Pubkey::find_program_address(&[b"token_vault", referral_program_pubkey.as_ref()], &program_id);
 
     // Initialize token vault
     let tx = client
@@ -118,14 +111,7 @@ fn test_create_referral_program_with_token_mint() {
 
     // Mint some tokens to owner's account
     let initial_token_amount = 10_000_000_000; // 10 tokens
-    mint_tokens(
-        &mint,
-        &owner_token_account,
-        &owner,
-        initial_token_amount,
-        &client,
-        program_id,
-    );
+    mint_tokens(&mint, &owner_token_account, &owner, initial_token_amount, &client, program_id);
 
     // Test depositing tokens
     let deposit_amount = 500_000_000; // 0.5 tokens
@@ -153,10 +139,7 @@ fn test_create_referral_program_with_token_mint() {
         .parse::<u64>()
         .unwrap();
 
-    assert_eq!(
-        vault_balance, deposit_amount,
-        "Token vault balance should match deposit amount"
-    );
+    assert_eq!(vault_balance, deposit_amount, "Token vault balance should match deposit amount");
 
     // Verify owner's token account balance was reduced
     let owner_balance = client

@@ -61,10 +61,7 @@ pub fn deposit_sol(ctx: Context<DepositSol>, amount: u64) -> Result<()> {
     system_program::transfer(
         CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
-            Transfer {
-                from: ctx.accounts.authority.to_account_info(),
-                to: ctx.accounts.vault.to_account_info(),
-            },
+            Transfer { from: ctx.accounts.authority.to_account_info(), to: ctx.accounts.vault.to_account_info() },
         ),
         amount,
     )?;

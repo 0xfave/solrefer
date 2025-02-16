@@ -1,9 +1,6 @@
-use crate::constants::*;
-use crate::error::*;
-use crate::state::*;
+use crate::{constants::*, error::*, state::*};
 use anchor_lang::prelude::*;
-use anchor_spl::token::TokenAccount;
-use anchor_spl::token::{Mint, Token};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 /// Accounts for creating a new referral program.
 ///
@@ -12,7 +9,8 @@ use anchor_spl::token::{Mint, Token};
 ///
 /// - `referral_program`: The account that will store the referral program data.
 /// - `eligibility_criteria`: The account that will store the eligibility criteria for the referral program.
-/// - `token_mint_info`: An optional account for the token mint to be used for payments. If not provided, the program will use native SOL.
+/// - `token_mint_info`: An optional account for the token mint to be used for payments. If not provided, the program
+///   will use native SOL.
 /// - `authority`: The signer account that will create the referral program.
 /// - `system_program`: The system program account.
 /// - `token_program`: An optional token program account.
@@ -54,12 +52,14 @@ pub struct CreateReferralProgram<'info> {
 
 /// Creates a new referral program with the specified parameters.
 ///
-/// This function sets up a new referral program, including the referral program account and the eligibility criteria account.
-/// It validates the input parameters and sets the initial values for the referral program and eligibility criteria.
+/// This function sets up a new referral program, including the referral program account and the eligibility criteria
+/// account. It validates the input parameters and sets the initial values for the referral program and eligibility
+/// criteria.
 ///
 /// # Parameters
 /// - `ctx`: The context for the `CreateReferralProgram` accounts.
-/// - `token_mint`: An optional token mint account to be used for payments. If not provided, the program will use native SOL.
+/// - `token_mint`: An optional token mint account to be used for payments. If not provided, the program will use native
+///   SOL.
 /// - `fixed_reward_amount`: The fixed reward amount for referrals.
 /// - `locked_period`: The locked period for referral rewards.
 /// - `early_redemption_fee`: The fee for early redemption of referral rewards.
@@ -77,6 +77,7 @@ pub struct CreateReferralProgram<'info> {
 ///
 /// # Returns
 /// A `Result` indicating whether the referral program was created successfully.
+#[allow(clippy::too_many_arguments)]
 pub fn create_referral_program(
     ctx: Context<CreateReferralProgram>,
     token_mint: Option<Pubkey>,
@@ -97,41 +98,20 @@ pub fn create_referral_program(
     program_end_time: Option<i64>,
 ) -> Result<()> {
     // Validate base parameters
-    require!(
-        fixed_reward_amount >= MIN_REWARD_AMOUNT,
-        ReferralError::InvalidRewardAmount
-    );
-    require!(
-        early_redemption_fee <= MAX_FEE_PERCENTAGE,
-        ReferralError::InvalidFeeAmount
-    );
+    require!(fixed_reward_amount >= MIN_REWARD_AMOUNT, ReferralError::InvalidRewardAmount);
+    require!(early_redemption_fee <= MAX_FEE_PERCENTAGE, ReferralError::InvalidFeeAmount);
 
     // Validate eligibility parameters
-    require!(
-        base_reward >= MIN_REWARD_AMOUNT,
-        ReferralError::InvalidRewardAmount
-    );
-    require!(
-        tier1_reward >= base_reward,
-        ReferralError::InvalidTierReward
-    );
-    require!(
-        tier2_reward >= tier1_reward,
-        ReferralError::InvalidTierReward
-    );
-    require!(
-        tier2_threshold > tier1_threshold,
-        ReferralError::InvalidTierThreshold
-    );
-    require!(
-        revenue_share_percent <= MAX_FEE_PERCENTAGE,
-        ReferralError::InvalidFeeAmount
-    );
+    require!(base_reward >= MIN_REWARD_AMOUNT, ReferralError::InvalidRewardAmount);
+    require!(tier1_reward >= base_reward, ReferralError::InvalidTierReward);
+    require!(tier2_reward >= tier1_reward, ReferralError::InvalidTierReward);
+    require!(tier2_threshold > tier1_threshold, ReferralError::InvalidTierThreshold);
+    require!(revenue_share_percent <= MAX_FEE_PERCENTAGE, ReferralError::InvalidFeeAmount);
 
     // Set up referral program
     let referral_program = &mut ctx.accounts.referral_program;
     referral_program.authority = ctx.accounts.authority.key();
-    referral_program.token_mint = token_mint.unwrap_or(Pubkey::default());
+    referral_program.token_mint = token_mint.unwrap_or_default();
     referral_program.fixed_reward_amount = fixed_reward_amount;
     referral_program.locked_period = locked_period;
     referral_program.early_redemption_fee = early_redemption_fee;
@@ -160,10 +140,7 @@ pub fn create_referral_program(
     criteria.is_active = true;
     criteria.last_updated = clock.unix_timestamp;
 
-    msg!(
-        "Created referral program with authority: {:?}",
-        referral_program.authority
-    );
+    msg!("Created referral program with authority: {:?}", referral_program.authority);
     Ok(())
 }
 
@@ -215,6 +192,7 @@ pub struct SetEligibilityCriteria<'info> {
 ///
 /// # Returns
 /// A `Result` indicating whether the operation was successful.
+#[allow(clippy::too_many_arguments)]
 pub fn set_eligibility_criteria(
     ctx: Context<SetEligibilityCriteria>,
     base_reward: u64,
@@ -232,26 +210,11 @@ pub fn set_eligibility_criteria(
     let clock = Clock::get()?;
 
     // Validate parameters
-    require!(
-        base_reward >= MIN_REWARD_AMOUNT,
-        ReferralError::InvalidRewardAmount
-    );
-    require!(
-        tier1_reward >= base_reward,
-        ReferralError::InvalidTierReward
-    );
-    require!(
-        tier2_reward >= tier1_reward,
-        ReferralError::InvalidTierReward
-    );
-    require!(
-        tier2_threshold > tier1_threshold,
-        ReferralError::InvalidTierThreshold
-    );
-    require!(
-        revenue_share_percent <= MAX_FEE_PERCENTAGE,
-        ReferralError::InvalidFeeAmount
-    );
+    require!(base_reward >= MIN_REWARD_AMOUNT, ReferralError::InvalidRewardAmount);
+    require!(tier1_reward >= base_reward, ReferralError::InvalidTierReward);
+    require!(tier2_reward >= tier1_reward, ReferralError::InvalidTierReward);
+    require!(tier2_threshold > tier1_threshold, ReferralError::InvalidTierThreshold);
+    require!(revenue_share_percent <= MAX_FEE_PERCENTAGE, ReferralError::InvalidFeeAmount);
 
     // Set reward structure
     criteria.base_reward = base_reward;
@@ -358,9 +321,6 @@ pub struct InitializeTokenVault<'info> {
 /// 3. Users can then deposit tokens to the program
 /// ```
 pub fn initialize_token_vault(ctx: Context<InitializeTokenVault>) -> Result<()> {
-    msg!(
-        "Initialized token vault for referral program {}",
-        ctx.accounts.referral_program.key()
-    );
+    msg!("Initialized token vault for referral program {}", ctx.accounts.referral_program.key());
     Ok(())
 }

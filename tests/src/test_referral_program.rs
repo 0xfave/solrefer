@@ -55,34 +55,19 @@ fn test_create_sol_referral_program() {
     assert!(referral_program.is_active);
 
     // Find PDA for vault
-    let (vault, _) =
-        Pubkey::find_program_address(&[b"vault", referral_program_pubkey.as_ref()], &program_id);
+    let (vault, _) = Pubkey::find_program_address(&[b"vault", referral_program_pubkey.as_ref()], &program_id);
 
     // Test depositing SOL
     let deposit_amount = 500_000_000; // 0.5 SOL
-    let tx = deposit_sol(
-        deposit_amount,
-        referral_program_pubkey,
-        &owner,
-        &client,
-        program_id,
-        vault,
-    );
+    let tx = deposit_sol(deposit_amount, referral_program_pubkey, &owner, &client, program_id, vault);
 
     println!("Deposited SOL. Transaction signature: {}", tx);
 
     // Verify the vault balance
-    let vault_balance = client
-        .program(program_id)
-        .unwrap()
-        .rpc()
-        .get_balance(&vault)
-        .expect("Failed to get vault balance");
+    let vault_balance =
+        client.program(program_id).unwrap().rpc().get_balance(&vault).expect("Failed to get vault balance");
 
-    assert_eq!(
-        vault_balance, deposit_amount,
-        "Vault balance should match deposit amount"
-    );
+    assert_eq!(vault_balance, deposit_amount, "Vault balance should match deposit amount");
 }
 
 #[test]
@@ -114,26 +99,11 @@ fn test_sol_referral_program_not_sol_deposit() {
     // Create a token mint and account to test invalid deposits
     let mint = create_mint(&owner, &client, program_id);
     let owner_token_account = create_token_account(&owner, &mint.pubkey(), &client, program_id);
-    mint_tokens(
-        &mint,
-        &owner_token_account,
-        &owner,
-        1_000_000_000,
-        &client,
-        program_id,
-    );
+    mint_tokens(&mint, &owner_token_account, &owner, 1_000_000_000, &client, program_id);
 
     // Test case 1: Try to deposit 0 SOL (should fail)
-    let result = std::panic::catch_unwind(|| {
-        deposit_sol(
-            0,
-            referral_program_pubkey,
-            &owner,
-            &client,
-            program_id,
-            vault,
-        )
-    });
+    let result =
+        std::panic::catch_unwind(|| deposit_sol(0, referral_program_pubkey, &owner, &client, program_id, vault));
     assert!(result.is_err(), "Should fail when depositing 0 SOL");
 
     // Test case 2: Try to deposit tokens to SOL program (should fail)
