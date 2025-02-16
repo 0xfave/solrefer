@@ -8,82 +8,6 @@ on:
       - "main"
 
 jobs:
-  check:
-    name: Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
-        name: Cache Solana Tool Suite
-        id: cache-solana
-        with:
-          path: |
-            ~/.cache/solana
-            ~/.local/share/solana/install
-          key: solana-${{ runner.os }}
-      - uses: actions/cache@v4
-        name: Cache Anchor CLI
-        id: cache-anchor
-        with:
-          path: |
-            ~/.cargo/bin/anchor
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: anchor-${{ runner.os }}
-      - name: Install Solana
-        if: steps.cache-solana.outputs.cache-hit != 'true'
-        run: |
-          sh -c "$(curl -sSfL https://release.solana.com/v1.17.0/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-      - name: Install Anchor CLI
-        if: steps.cache-anchor.outputs.cache-hit != 'true'
-        run: cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
-      - name: Install Latest Anchor Version
-        run: avm install latest && avm use latest
-      - name: Build
-        run: anchor build
-      - name: Run Check
-        run: cargo check
-
-  test:
-    name: Test Suite
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/cache@v4
-        name: Cache Solana Tool Suite
-        id: cache-solana
-        with:
-          path: |
-            ~/.cache/solana
-            ~/.local/share/solana/install
-          key: solana-${{ runner.os }}
-      - uses: actions/cache@v4
-        name: Cache Anchor CLI
-        id: cache-anchor
-        with:
-          path: |
-            ~/.cargo/bin/anchor
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: anchor-${{ runner.os }}
-      - name: Install Solana
-        if: steps.cache-solana.outputs.cache-hit != 'true'
-        run: |
-          sh -c "$(curl -sSfL https://release.solana.com/v1.17.0/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-      - name: Install Anchor CLI
-        if: steps.cache-anchor.outputs.cache-hit != 'true'
-        run: cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
-      - name: Install Latest Anchor Version
-        run: avm install latest && avm use latest
-      - name: Run Tests
-        run: anchor test
-
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest
@@ -94,8 +18,8 @@ jobs:
           components: rustfmt
       - run: cargo +nightly fmt --all -- --check
 
-  clippy:
-    name: Clippy
+  lint-and-test:
+    name: Lint and Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -103,19 +27,37 @@ jobs:
         with:
           components: clippy
       - uses: actions/cache@v4
-        name: Cache Anchor CLI
-        id: cache-anchor
+        name: Cache Dependencies
+        id: cache-deps
         with:
           path: |
             ~/.cargo/bin/anchor
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
-          key: anchor-${{ runner.os }}
+            ~/.cache/solana
+            ~/.local/share/solana/install
+          key: deps-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+
+      # Install dependencies only if cache miss
+      - name: Install Solana
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v1.17.0/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
       - name: Install Anchor CLI
-        if: steps.cache-anchor.outputs.cache-hit != 'true'
-        run: cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
-      - name: Install Latest Anchor Version
-        run: avm install latest && avm use latest
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
+          avm install 0.28.0
+          avm use 0.28.0
+
+      # Run checks in parallel where possible
       - name: Run Clippy
         run: cargo clippy -- -D warnings
+
+      - name: Run Build and Tests
+        run: |
+          anchor build
+          anchor test
