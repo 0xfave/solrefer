@@ -8,11 +8,11 @@ use anchor_lang::prelude::*;
 /// tier thresholds.
 #[error_code]
 pub enum ReferralError {
-    #[msg("Invalid reward amount")]
+    #[msg("Invalid reward amount - must be greater than MIN_REWARD_AMOUNT")]
     InvalidRewardAmount,
-    #[msg("Invalid fee amount")]
+    #[msg("Invalid fee amount - must be less than MAX_FEE_PERCENTAGE")]
     InvalidFeeAmount,
-    #[msg("Invalid locked period")]
+    #[msg("Invalid locked period - must be between MIN_LOCKED_PERIOD and MAX_LOCKED_PERIOD")]
     InvalidLockedPeriod,
     #[msg("Invalid minimum stake amount")]
     InvalidMinStakeAmount,
@@ -36,4 +36,14 @@ pub enum ReferralError {
     TokenDepositToSolProgram,
     #[msg("Cannot deposit SOL to a token-based referral program")]
     SolDepositToTokenProgram,
+    #[msg("Invalid mint fee - must be less than or equal to MAX_MINT_FEE")]
+    InvalidMintFee,
+    #[msg("Invalid early redemption fee - must be less than or equal to MAX_EARLY_REDEMPTION_FEE")]
+    InvalidEarlyRedemptionFee,
+    #[msg("Invalid program end time - must be in the future and after locked period")]
+    InvalidProgramEndTime,
+    #[msg("Invalid reward cap - must be greater than or equal to fixed and base rewards")]
+    InvalidRewardCap,
+    #[msg("Invalid minimum token amount - must be greater than 0 for token-based programs")]
+    InvalidMinTokenAmount,
 }

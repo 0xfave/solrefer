@@ -324,3 +324,140 @@ pub fn initialize_token_vault(ctx: Context<InitializeTokenVault>) -> Result<()> 
     msg!("Initialized token vault for referral program {}", ctx.accounts.referral_program.key());
     Ok(())
 }
+
+/// Settings that can be updated for a referral program
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct ProgramSettings {
+    /// The fixed reward amount for referrals
+    pub fixed_reward_amount: u64,
+    /// The locked period for referral rewards
+    pub locked_period: i64,
+    /// The fee for early redemption of referral rewards
+    pub early_redemption_fee: u64,
+    /// The fee for minting referral rewards
+    pub mint_fee: u64,
+    /// Optional end time for the referral program
+    pub program_end_time: Option<i64>,
+    /// The base reward amount for referrals
+    pub base_reward: u64,
+    /// The maximum reward cap
+    pub max_reward_cap: u64,
+    /// The revenue share percentage
+    pub revenue_share_percent: u64,
+    /// The minimum token amount required (if using tokens)
+    pub min_token_amount: u64,
+}
+
+/// Accounts required for updating program settings
+#[derive(Accounts)]
+pub struct UpdateProgramSettings<'info> {
+    #[account(
+        mut,
+        constraint = referral_program.authority == authority.key(),
+        constraint = referral_program.is_active @ ReferralError::ProgramInactive,
+    )]
+    pub referral_program: Account<'info, ReferralProgram>,
+
+    #[account(
+        mut,
+        seeds = [b"eligibility_criteria", referral_program.key().as_ref()],
+        bump
+    )]
+    pub eligibility_criteria: Account<'info, EligibilityCriteria>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+/// Updates the settings of an existing referral program
+///
+/// This function allows the program authority to update various settings of the referral program,
+/// such as reward amounts, locked periods, and fees. It validates the new settings to ensure they
+/// meet the program's requirements.
+///
+/// # Arguments
+/// * `ctx` - The context for the UpdateProgramSettings instruction
+/// * `new_settings` - The new settings to apply to the program
+///
+/// # Returns
+/// * `Result<()>` - Returns Ok(()) if successful, or an error if validation fails
+pub fn update_program_settings(
+    ctx: Context<UpdateProgramSettings>,
+    new_settings: ProgramSettings,
+) -> Result<()> {
+    let current_time = Clock::get()?.unix_timestamp;
+
+    // Core reward amount validations
+    require!(
+        new_settings.fixed_reward_amount >= MIN_REWARD_AMOUNT,
+        ReferralError::InvalidRewardAmount
+    );
+    require!(
+        new_settings.base_reward >= MIN_REWARD_AMOUNT,
+        ReferralError::InvalidRewardAmount
+    );
+    require!(
+        new_settings.max_reward_cap >= new_settings.fixed_reward_amount 
+        && new_settings.max_reward_cap >= new_settings.base_reward,
+        ReferralError::InvalidRewardCap
+    );
+
+    // Time period validations
+    require!(
+        new_settings.locked_period >= MIN_LOCKED_PERIOD && new_settings.locked_period <= MAX_LOCKED_PERIOD,
+        ReferralError::InvalidLockedPeriod
+    );
+    if let Some(end_time) = new_settings.program_end_time {
+        require!(
+            end_time > current_time,
+            ReferralError::InvalidProgramEndTime
+        );
+        // Ensure end time is after locked period
+        require!(
+            end_time > current_time + new_settings.locked_period,
+            ReferralError::InvalidProgramEndTime
+        );
+    }
+
+    // Fee validations
+    require!(
+        new_settings.early_redemption_fee <= MAX_EARLY_REDEMPTION_FEE,
+        ReferralError::InvalidEarlyRedemptionFee
+    );
+    require!(
+        new_settings.mint_fee <= MAX_MINT_FEE,
+        ReferralError::InvalidMintFee
+    );
+    require!(
+        new_settings.revenue_share_percent <= MAX_FEE_PERCENTAGE,
+        ReferralError::InvalidFeeAmount
+    );
+
+    // Token amount validation (if program uses tokens)
+    if ctx.accounts.referral_program.token_mint != Pubkey::default() {
+        require!(
+            new_settings.min_token_amount > 0,
+            ReferralError::InvalidMinTokenAmount
+        );
+    }
+
+    // Update core program settings
+    let program = &mut ctx.accounts.referral_program;
+    program.fixed_reward_amount = new_settings.fixed_reward_amount;
+    program.locked_period = new_settings.locked_period;
+    program.early_redemption_fee = new_settings.early_redemption_fee;
+    program.mint_fee = new_settings.mint_fee;
+
+    // Update eligibility criteria
+    let criteria = &mut ctx.accounts.eligibility_criteria;
+    criteria.program_end_time = new_settings.program_end_time;
+    criteria.base_reward = new_settings.base_reward;
+    criteria.max_reward_cap = new_settings.max_reward_cap;
+    criteria.revenue_share_percent = new_settings.revenue_share_percent;
+    criteria.min_token_amount = new_settings.min_token_amount;
+    criteria.last_updated = current_time;
+
+    Ok(())
+}

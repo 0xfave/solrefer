@@ -1,6 +1,6 @@
-use anchor_client::solana_sdk::{pubkey::Pubkey, signer::Signer};
+use anchor_client::solana_sdk::{pubkey::Pubkey, signer::Signer, system_program};
 use anchor_spl::token::spl_token;
-use solrefer::state::ReferralProgram;
+use solrefer::{state::{ReferralProgram, EligibilityCriteria}, instructions::ProgramSettings};
 
 use crate::test_util::{
     create_mint, create_sol_referral_program, create_token_account, deposit_sol, mint_tokens, setup,
@@ -124,4 +124,444 @@ fn test_sol_referral_program_not_sol_deposit() {
         .signer(&owner)
         .send()
         .expect("Transaction failed but not with TokenDepositToSolProgram error");
+}
+
+#[test]
+fn test_update_program_settings_success() {
+    let (owner, _, _, program_id, client) = setup();
+
+    // Create a SOL referral program
+    let (referral_program_pubkey, _) = create_sol_referral_program(
+        &owner,
+        &client,
+        program_id,
+        1_000_000,     // 0.001 SOL fixed reward
+        60,            // 1 minute locked period
+        2500,          // 25% early redemption fee in basis points
+        1000,          // 10% mint fee in basis points
+        50_000_000,    // 0.05 SOL base reward
+        5,             // 5 referrals for tier 1
+        75_000_000,    // 0.075 SOL tier1 reward (> base_reward)
+        10,            // 10 referrals for tier 2
+        100_000_000,   // 0.1 SOL tier2 reward (> tier1_reward)
+        1_000_000_000, // 1 SOL max reward cap
+        500,           // 5% revenue share
+        None,          // No required token
+        0,             // No min token amount
+        None,          // No end time
+    );
+
+    // Find eligibility criteria PDA
+    let (eligibility_criteria_pubkey, _) = Pubkey::find_program_address(
+        &[b"eligibility_criteria", referral_program_pubkey.as_ref()],
+        &program_id,
+    );
+
+    // New settings to update
+    let new_settings = ProgramSettings {
+        fixed_reward_amount: 2_000_000,     // 0.002 SOL fixed reward
+        locked_period: 86400,              // 1 day locked period (minimum allowed)
+        early_redemption_fee: 3000,         // 30% early redemption fee
+        mint_fee: 50,                      // 0.5% mint fee (maximum allowed)
+        program_end_time: Some(i64::MAX),   // Set end time to max
+        base_reward: 75_000_000,            // 0.075 SOL base reward
+        max_reward_cap: 2_000_000_000,      // 2 SOL max reward cap
+        revenue_share_percent: 750,          // 7.5% revenue share
+        min_token_amount: 0,                // Keep min token amount at 0
+    };
+
+    // Update program settings
+    let tx = client
+        .program(program_id)
+        .unwrap()
+        .request()
+        .accounts(solrefer::accounts::UpdateProgramSettings {
+            referral_program: referral_program_pubkey,
+            eligibility_criteria: eligibility_criteria_pubkey,
+            authority: owner.pubkey(),
+            system_program: system_program::ID,
+        })
+        .args(solrefer::instruction::UpdateProgramSettings {
+            new_settings: new_settings.clone(),
+        })
+        .signer(&owner)
+        .send()
+        .expect("Failed to update program settings");
+
+    println!("Updated program settings. Transaction signature: {}", tx);
+
+    // Verify the updated settings
+    let referral_program: ReferralProgram = client
+        .program(program_id)
+        .unwrap()
+        .account(referral_program_pubkey)
+        .expect("Failed to fetch referral program account");
+
+    assert_eq!(referral_program.fixed_reward_amount, new_settings.fixed_reward_amount);
+    assert_eq!(referral_program.locked_period, new_settings.locked_period);
+    assert_eq!(referral_program.early_redemption_fee, new_settings.early_redemption_fee);
+    assert_eq!(referral_program.mint_fee, new_settings.mint_fee);
+    
+    // Verify eligibility criteria updates
+    let eligibility_criteria: EligibilityCriteria = client
+        .program(program_id)
+        .unwrap()
+        .account(eligibility_criteria_pubkey)
+        .expect("Failed to fetch eligibility criteria account");
+
+    assert_eq!(eligibility_criteria.base_reward, new_settings.base_reward);
+    assert_eq!(eligibility_criteria.max_reward_cap, new_settings.max_reward_cap);
+    assert_eq!(eligibility_criteria.revenue_share_percent, new_settings.revenue_share_percent);
+    assert_eq!(eligibility_criteria.program_end_time, new_settings.clone().program_end_time);
+}
+
+#[test]
+fn test_update_program_settings_invalid_reward_amount() {
+    let (owner, _, _, program_id, client) = setup();
+
+    // Create a SOL referral program with valid settings
+    let (referral_program_pubkey, _) = create_sol_referral_program(
+        &owner,
+        &client,
+        program_id,
+        1_000_000,     // 0.001 SOL fixed reward
+        86400,         // 1 day locked period
+        2500,          // 25% early redemption fee
+        50,            // 0.5% mint fee
+        50_000_000,    // 0.05 SOL base reward
+        5,             // 5 referrals for tier 1
+        75_000_000,    // 0.075 SOL tier1 reward
+        10,            // 10 referrals for tier 2
+        100_000_000,   // 0.1 SOL tier2 reward
+        1_000_000_000, // 1 SOL max reward cap
+        500,           // 5% revenue share
+        None,          // No required token
+        0,             // No min token amount
+        None,          // No end time
+    );
+
+    // Find eligibility criteria PDA
+    let (eligibility_criteria_pubkey, _) = Pubkey::find_program_address(
+        &[b"eligibility_criteria", referral_program_pubkey.as_ref()],
+        &program_id,
+    );
+
+    // Test case 1: Zero fixed reward amount
+    let invalid_settings_1 = ProgramSettings {
+        fixed_reward_amount: 0,            // Invalid: Zero reward
+        locked_period: 86400,              // 1 day
+        early_redemption_fee: 2500,        // 25%
+        mint_fee: 50,                      // 0.5%
+        program_end_time: None,
+        base_reward: 50_000_000,           // 0.05 SOL
+        max_reward_cap: 1_000_000_000,     // 1 SOL
+        revenue_share_percent: 500,         // 5%
+        min_token_amount: 0,
+    };
+
+    let result = client
+        .program(program_id)
+        .unwrap()
+        .request()
+        .accounts(solrefer::accounts::UpdateProgramSettings {
+            referral_program: referral_program_pubkey,
+            eligibility_criteria: eligibility_criteria_pubkey,
+            authority: owner.pubkey(),
+            system_program: system_program::ID,
+        })
+        .args(solrefer::instruction::UpdateProgramSettings {
+            new_settings: invalid_settings_1.clone(),
+        })
+        .signer(&owner)
+        .send();
+
+    assert!(result.is_err(), "Expected error for zero reward amount");
+
+    // Test case 2: Base reward greater than max reward cap
+    let invalid_settings_2 = ProgramSettings {
+        fixed_reward_amount: 1_000_000,     // 0.001 SOL
+        locked_period: 86400,               // 1 day
+        early_redemption_fee: 2500,         // 25%
+        mint_fee: 50,                       // 0.5%
+        program_end_time: None,
+        base_reward: 2_000_000_000,         // Invalid: 2 SOL base reward > 1 SOL max cap
+        max_reward_cap: 1_000_000_000,      // 1 SOL
+        revenue_share_percent: 500,          // 5%
+        min_token_amount: 0,
+    };
+
+    let result = client
+        .program(program_id)
+        .unwrap()
+        .request()
+        .accounts(solrefer::accounts::UpdateProgramSettings {
+            referral_program: referral_program_pubkey,
+            eligibility_criteria: eligibility_criteria_pubkey,
+            authority: owner.pubkey(),
+            system_program: system_program::ID,
+        })
+        .args(solrefer::instruction::UpdateProgramSettings {
+            new_settings: invalid_settings_2.clone(),
+        })
+        .signer(&owner)
+        .send();
+
+    assert!(result.is_err(), "Expected error for base reward > max reward cap");
+}
+
+#[test]
+fn test_update_program_settings_invalid_end_time() {
+    let (owner, _, _, program_id, client) = setup();
+
+    // Create a SOL referral program with valid settings
+    let (referral_program_pubkey, _) = create_sol_referral_program(
+        &owner,
+        &client,
+        program_id,
+        1_000_000,     // 0.001 SOL fixed reward
+        86400,         // 1 day locked period
+        2500,          // 25% early redemption fee
+        50,            // 0.5% mint fee
+        50_000_000,    // 0.05 SOL base reward
+        5,             // 5 referrals for tier 1
+        75_000_000,    // 0.075 SOL tier1 reward
+        10,            // 10 referrals for tier 2
+        100_000_000,   // 0.1 SOL tier2 reward
+        1_000_000_000, // 1 SOL max reward cap
+        500,           // 5% revenue share
+        None,          // No required token
+        0,             // No min token amount
+        None,          // No end time
+    );
+
+    // Find eligibility criteria PDA
+    let (eligibility_criteria_pubkey, _) = Pubkey::find_program_address(
+        &[b"eligibility_criteria", referral_program_pubkey.as_ref()],
+        &program_id,
+    );
+
+    // Get current time
+    let current_time = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+
+    // Test case 1: End time in the past
+    let invalid_settings_1 = ProgramSettings {
+        fixed_reward_amount: 1_000_000,     // 0.001 SOL
+        locked_period: 86400,               // 1 day
+        early_redemption_fee: 2500,         // 25%
+        mint_fee: 50,                       // 0.5%
+        program_end_time: Some(current_time - 1), // Invalid: End time in the past
+        base_reward: 50_000_000,            // 0.05 SOL
+        max_reward_cap: 1_000_000_000,      // 1 SOL
+        revenue_share_percent: 500,          // 5%
+        min_token_amount: 0,
+    };
+
+    let result = client
+        .program(program_id)
+        .unwrap()
+        .request()
+        .accounts(solrefer::accounts::UpdateProgramSettings {
+            referral_program: referral_program_pubkey,
+            eligibility_criteria: eligibility_criteria_pubkey,
+            authority: owner.pubkey(),
+            system_program: system_program::ID,
+        })
+        .args(solrefer::instruction::UpdateProgramSettings {
+            new_settings: invalid_settings_1.clone(),
+        })
+        .signer(&owner)
+        .send();
+
+    assert!(result.is_err(), "Expected error for end time in the past");
+
+    // Test case 2: End time before locked period ends
+    let invalid_settings_2 = ProgramSettings {
+        fixed_reward_amount: 1_000_000,     // 0.001 SOL
+        locked_period: 86400,               // 1 day
+        early_redemption_fee: 2500,         // 25%
+        mint_fee: 50,                       // 0.5%
+        program_end_time: Some(current_time + 3600), // Invalid: End time only 1 hour in future (less than locked period)
+        base_reward: 50_000_000,            // 0.05 SOL
+        max_reward_cap: 1_000_000_000,      // 1 SOL
+        revenue_share_percent: 500,          // 5%
+        min_token_amount: 0,
+    };
+
+    let result = client
+        .program(program_id)
+        .unwrap()
+        .request()
+        .accounts(solrefer::accounts::UpdateProgramSettings {
+            referral_program: referral_program_pubkey,
+            eligibility_criteria: eligibility_criteria_pubkey,
+            authority: owner.pubkey(),
+            system_program: system_program::ID,
+        })
+        .args(solrefer::instruction::UpdateProgramSettings {
+            new_settings: invalid_settings_2.clone(),
+        })
+        .signer(&owner)
+        .send();
+
+    assert!(result.is_err(), "Expected error for end time before locked period ends");
+}
+
+#[test]
+fn test_update_program_settings_invalid_locked_period() {
+    let (owner, _, _, program_id, client) = setup();
+
+    // Create a SOL referral program with valid settings
+    let (referral_program_pubkey, _) = create_sol_referral_program(
+        &owner,
+        &client,
+        program_id,
+        1_000_000,     // 0.001 SOL fixed reward
+        86400,         // 1 day locked period
+        2500,          // 25% early redemption fee
+        50,            // 0.5% mint fee
+        50_000_000,    // 0.05 SOL base reward
+        5,             // 5 referrals for tier 1
+        75_000_000,    // 0.075 SOL tier1 reward
+        10,            // 10 referrals for tier 2
+        100_000_000,   // 0.1 SOL tier2 reward
+        1_000_000_000, // 1 SOL max reward cap
+        500,           // 5% revenue share
+        None,          // No required token
+        0,             // No min token amount
+        None,          // No end time
+    );
+
+    // Find eligibility criteria PDA
+    let (eligibility_criteria_pubkey, _) = Pubkey::find_program_address(
+        &[b"eligibility_criteria", referral_program_pubkey.as_ref()],
+        &program_id,
+    );
+
+    // Test case 1: Locked period too short (less than 1 day)
+    let invalid_settings_1 = ProgramSettings {
+        fixed_reward_amount: 1_000_000,     // 0.001 SOL
+        locked_period: 3600,                // Invalid: Only 1 hour (minimum is 1 day)
+        early_redemption_fee: 2500,         // 25%
+        mint_fee: 50,                       // 0.5%
+        program_end_time: None,
+        base_reward: 50_000_000,            // 0.05 SOL
+        max_reward_cap: 1_000_000_000,      // 1 SOL
+        revenue_share_percent: 500,          // 5%
+        min_token_amount: 0,
+    };
+
+    let result = client
+        .program(program_id)
+        .unwrap()
+        .request()
+        .accounts(solrefer::accounts::UpdateProgramSettings {
+            referral_program: referral_program_pubkey,
+            eligibility_criteria: eligibility_criteria_pubkey,
+            authority: owner.pubkey(),
+            system_program: system_program::ID,
+        })
+        .args(solrefer::instruction::UpdateProgramSettings {
+            new_settings: invalid_settings_1.clone(),
+        })
+        .signer(&owner)
+        .send();
+
+    assert!(result.is_err(), "Expected error for locked period less than 1 day");
+
+    // Test case 2: Locked period too long (more than 365 days)
+    let invalid_settings_2 = ProgramSettings {
+        fixed_reward_amount: 1_000_000,     // 0.001 SOL
+        locked_period: 31536000 + 86400,    // Invalid: 366 days (maximum is 365 days)
+        early_redemption_fee: 2500,         // 25%
+        mint_fee: 50,                       // 0.5%
+        program_end_time: None,
+        base_reward: 50_000_000,            // 0.05 SOL
+        max_reward_cap: 1_000_000_000,      // 1 SOL
+        revenue_share_percent: 500,          // 5%
+        min_token_amount: 0,
+    };
+
+    let result = client
+        .program(program_id)
+        .unwrap()
+        .request()
+        .accounts(solrefer::accounts::UpdateProgramSettings {
+            referral_program: referral_program_pubkey,
+            eligibility_criteria: eligibility_criteria_pubkey,
+            authority: owner.pubkey(),
+            system_program: system_program::ID,
+        })
+        .args(solrefer::instruction::UpdateProgramSettings {
+            new_settings: invalid_settings_2.clone(),
+        })
+        .signer(&owner)
+        .send();
+
+    assert!(result.is_err(), "Expected error for locked period more than 365 days");
+}
+
+#[test]
+fn test_update_program_settings_invalid_mint_fee() {
+    let (owner, _, _, program_id, client) = setup();
+
+    // Create a SOL referral program with valid settings
+    let (referral_program_pubkey, _) = create_sol_referral_program(
+        &owner,
+        &client,
+        program_id,
+        1_000_000,     // 0.001 SOL fixed reward
+        86400,         // 1 day locked period
+        2500,          // 25% early redemption fee
+        50,            // 0.5% mint fee
+        50_000_000,    // 0.05 SOL base reward
+        5,             // 5 referrals for tier 1
+        75_000_000,    // 0.075 SOL tier1 reward
+        10,            // 10 referrals for tier 2
+        100_000_000,   // 0.1 SOL tier2 reward
+        1_000_000_000, // 1 SOL max reward cap
+        500,           // 5% revenue share
+        None,          // No required token
+        0,             // No min token amount
+        None,          // No end time
+    );
+
+    // Find eligibility criteria PDA
+    let (eligibility_criteria_pubkey, _) = Pubkey::find_program_address(
+        &[b"eligibility_criteria", referral_program_pubkey.as_ref()],
+        &program_id,
+    );
+
+    // Test case: Mint fee too high (more than 0.5%)
+    let invalid_settings = ProgramSettings {
+        fixed_reward_amount: 1_000_000,     // 0.001 SOL
+        locked_period: 86400,               // 1 day
+        early_redemption_fee: 2500,         // 25%
+        mint_fee: 100,                      // Invalid: 1% (maximum is 0.5% = 50 basis points)
+        program_end_time: None,
+        base_reward: 50_000_000,            // 0.05 SOL
+        max_reward_cap: 1_000_000_000,      // 1 SOL
+        revenue_share_percent: 500,          // 5%
+        min_token_amount: 0,
+    };
+
+    let result = client
+        .program(program_id)
+        .unwrap()
+        .request()
+        .accounts(solrefer::accounts::UpdateProgramSettings {
+            referral_program: referral_program_pubkey,
+            eligibility_criteria: eligibility_criteria_pubkey,
+            authority: owner.pubkey(),
+            system_program: system_program::ID,
+        })
+        .args(solrefer::instruction::UpdateProgramSettings {
+            new_settings: invalid_settings.clone(),
+        })
+        .signer(&owner)
+        .send();
+
+    assert!(result.is_err(), "Expected error for mint fee exceeding 0.5%");
 }

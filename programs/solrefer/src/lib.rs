@@ -148,4 +148,20 @@ pub mod solrefer {
     pub fn deposit_token(ctx: Context<DepositToken>, amount: u64) -> Result<()> {
         instructions::deposit::deposit_token(ctx, amount)
     }
+
+    /// Updates the settings of an existing referral program.
+    ///
+    /// This function allows the program authority to update various settings of the referral program,
+    /// such as reward amounts, locked periods, and fees. It validates the new settings to ensure they
+    /// meet the program's requirements.
+    ///
+    /// # Arguments
+    /// * `ctx` - The context for the UpdateProgramSettings instruction
+    /// * `new_settings` - The new settings to apply to the program
+    pub fn update_program_settings(
+        ctx: Context<UpdateProgramSettings>,
+        new_settings: ProgramSettings,
+    ) -> Result<()> {
+        instructions::referral_program::update_program_settings(ctx, new_settings)
+    }
 }
