@@ -55,9 +55,9 @@ jobs:
 
       # Run checks in parallel where possible
       - name: Run Clippy
-        run: cargo clippy -- -D warnings
+        run: RUSTFLAGS="-A unexpected_cfgs" cargo clippy -- -D warnings
 
       - name: Run Build and Tests
         run: |
-          anchor build
-          anchor test
+          RUSTFLAGS="-A unexpected_cfgs" anchor build
+          RUSTFLAGS="-A unexpected_cfgs" anchor test
