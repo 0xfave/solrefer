@@ -16,7 +16,6 @@ fn test_create_referral_program_with_token_mint() {
     // Test parameters
     let fixed_reward_amount = 1_000_000_000; // 1 token
     let locked_period = 7 * 24 * 60 * 60; // 7 days in seconds
-    let early_redemption_fee = 1000; // 10% in basis points
 
     // Find PDA for referral program
     let binding = owner.pubkey();
@@ -43,17 +42,8 @@ fn test_create_referral_program_with_token_mint() {
         .args(solrefer::instruction::CreateReferralProgram {
             token_mint: Some(mint.pubkey()),
             fixed_reward_amount,
-            locked_period,
-            early_redemption_fee,
-            base_reward: 50_000_000,       // 0.05 SOL base reward
-            tier1_threshold: 5,            // 5 referrals for tier 1
-            tier1_reward: 75_000_000,      // 0.075 SOL tier 1 reward
-            tier2_threshold: 10,           // 10 referrals for tier 2
-            tier2_reward: 100_000_000,     // 0.1 SOL tier 2 reward
-            max_reward_cap: 1_000_000_000, // 1 SOL max rewards
-            revenue_share_percent: 500,    // 5% revenue share
-            required_token: None,
-            min_token_amount: 0,
+            locked_period,   // 0.1 SOL tier 2 reward
+            max_reward_cap: 1_000_000_000,
             program_end_time: None,
         })
         .signer(&owner)
@@ -73,7 +63,6 @@ fn test_create_referral_program_with_token_mint() {
     assert_eq!(referral_program.token_mint, mint.pubkey());
     assert_eq!(referral_program.fixed_reward_amount, fixed_reward_amount);
     assert_eq!(referral_program.locked_period, locked_period);
-    assert_eq!(referral_program.early_redemption_fee, early_redemption_fee);
     assert_eq!(referral_program.total_referrals, 0);
     assert_eq!(referral_program.total_rewards_distributed, 0);
     assert!(referral_program.is_active);

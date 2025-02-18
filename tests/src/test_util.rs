@@ -284,16 +284,7 @@ pub fn create_sol_referral_program(
     program_id: Pubkey,
     fixed_reward_amount: u64,
     locked_period: i64,
-    early_redemption_fee: u64,
-    base_reward: u64,
-    tier1_threshold: u64,
-    tier1_reward: u64,
-    tier2_threshold: u64,
-    tier2_reward: u64,
     max_reward_cap: u64,
-    revenue_share_percent: u64,
-    required_token: Option<Pubkey>,
-    min_token_amount: u64,
     program_end_time: Option<i64>,
 ) -> (Pubkey, Pubkey) {
     // Find the PDA for referral program
@@ -318,16 +309,7 @@ pub fn create_sol_referral_program(
             token_mint: None,
             fixed_reward_amount,
             locked_period,
-            early_redemption_fee,
-            base_reward,
-            tier1_threshold,
-            tier1_reward,
-            tier2_threshold,
-            tier2_reward,
             max_reward_cap,
-            revenue_share_percent,
-            required_token,
-            min_token_amount,
             program_end_time,
         })
         .signer(owner)

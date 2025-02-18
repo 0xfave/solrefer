@@ -115,6 +115,46 @@ update_account_state(account_id: Pubkey, new_state: AccountState) -> Result<(), 
 - Referrer cannot be self
 - Referral program must be active
 
+## Reward Mechanism
+
+The referral program uses a **fair reward distribution model** based on the ratio of referrals made by each participant. Here's how it works:
+
+1. **Tracking Referrals**:
+   - Each participant's `total_referrals` is tracked in their account.
+   - The referral program's `total_referrals` is updated whenever a new referral is made.
+
+2. **Reward Claiming**:
+   - Participants can claim their rewards at any time while the program is active.
+   - Rewards are calculated based on the participant's contribution ratio:
+     - `referral_ratio = participant.total_referrals / program.total_referrals`
+     - `reward_amount = referral_ratio * program.fixed_reward_amount`
+   - Early claims before the locked period are subject to a redemption fee.
+   - Participants must meet minimum stake requirements to be eligible for rewards.
+
+3. **Fraud Prevention** (Upcoming):
+   - To combat fraudulent referrals, we will implement:
+     - **Referral Validation**: Verify that referred users are unique and legitimate.
+     - **Anti-Sybil Measures**: Detect and prevent users from creating multiple accounts to game the system.
+     - **Activity Tracking**: Ensure referred users are active and meet program criteria.
+
+### Implementation Details
+
+- **Participant Account**:
+  - Tracks `total_referrals` for reward calculation
+  - Tracks `total_rewards` claimed
+  - Tracks `last_claim_time` for locked period enforcement
+
+- **Referral Program Account**:
+  - Tracks `total_referrals` across all participants
+  - Maintains `fixed_reward_amount` and `early_redemption_fee`
+  - Enforces `min_stake_amount` requirement
+  - Manages `locked_period` for early redemption penalties
+
+- **Claim Rewards Function**:
+  - Allows participants to claim their proportion of rewards
+  - Applies early redemption fee if claimed before locked period
+  - Verifies minimum stake requirements
+
 ## Program Architecture
 
 ### State Accounts

@@ -13,19 +13,10 @@ fn test_join_referral_program_sucesss() {
         &owner,
         &client,
         program_id,
-        1_000_000,    // 1 SOL fixed reward
-        7 * 24 * 60 * 60, // 7 days locked period
-        1000,         // 10% early redemption fee
-        50_000_000,   // 0.05 SOL base reward
-        5,            // 5 referrals for tier 1
-        75_000_000,   // 0.075 SOL tier1 reward
-        10,           // 10 referrals for tier 2
-        100_000_000,  // 0.1 SOL tier2 reward
-        1_000_000_000, // 1 SOL max reward cap
-        500,          // 5% revenue share
-        None,         // No token requirement
-        0,            // No min token amount
-        None,         // No end time
+        1_000_000,             // 1 SOL fixed reward
+        7 * 24 * 60 * 60,      // 7 days locked period
+        1_000_000_000,         // 1 SOL max reward cap
+        None,                  // No end time
     );
 
     // Calculate PDA for participant account
@@ -83,19 +74,10 @@ fn test_join_through_referral_success() {
         &owner,
         &client,
         program_id,
-        1_000_000,    // 1 SOL fixed reward
-        7 * 24 * 60 * 60, // 7 days locked period
-        1000,         // 10% early redemption fee
-        50_000_000,   // 0.05 SOL base reward
-        5,            // 5 referrals for tier 1
-        75_000_000,   // 0.075 SOL tier1 reward
-        10,           // 10 referrals for tier 2
-        100_000_000,  // 0.1 SOL tier2 reward
-        1_000_000_000, // 1 SOL max reward cap
-        500,          // 5% revenue share
-        None,         // No token requirement
-        0,            // No min token amount
-        None,         // No end time
+        1_000_000,             // 1 SOL fixed reward
+        7 * 24 * 60 * 60,      // 7 days locked period
+        1_000_000_000,         // 1 SOL max reward cap
+        None,                  // No end time
     );
 
     // Calculate PDA for referrer's participant account
@@ -186,19 +168,10 @@ fn test_join_through_invalid_referral() {
         &owner,
         &client,
         program_id,
-        1_000_000,    // 1 SOL fixed reward
-        7 * 24 * 60 * 60, // 7 days locked period
-        1000,         // 10% early redemption fee
-        50_000_000,   // 0.05 SOL base reward
-        5,            // 5 referrals for tier 1
-        75_000_000,   // 0.075 SOL tier1 reward
-        10,           // 10 referrals for tier 2
-        100_000_000,  // 0.1 SOL tier2 reward
-        1_000_000_000, // 1 SOL max reward cap
-        500,          // 5% revenue share
-        None,         // No token requirement
-        0,            // No min token amount
-        None,         // No end time
+        1_000_000,             // 1 SOL fixed reward
+        7 * 24 * 60 * 60,      // 7 days locked period
+        1_000_000_000,         // 1 SOL max reward cap
+        None,                  // No end time
     );
 
     // Create a keypair for the invalid account

@@ -82,28 +82,11 @@ pub fn create_referral_program(
     token_mint: Option<Pubkey>,
     fixed_reward_amount: u64,
     locked_period: i64,
-    early_redemption_fee: u64,
-    base_reward: u64,
-    tier1_threshold: u64,
-    tier1_reward: u64,
-    tier2_threshold: u64,
-    tier2_reward: u64,
     max_reward_cap: u64,
-    revenue_share_percent: u64,
-    required_token: Option<Pubkey>,
-    min_token_amount: u64,
     program_end_time: Option<i64>,
 ) -> Result<()> {
     // Validate base parameters
     require!(fixed_reward_amount >= MIN_REWARD_AMOUNT, ReferralError::InvalidRewardAmount);
-    require!(early_redemption_fee <= MAX_FEE_PERCENTAGE, ReferralError::InvalidFeeAmount);
-
-    // Validate eligibility parameters
-    require!(base_reward >= MIN_REWARD_AMOUNT, ReferralError::InvalidRewardAmount);
-    require!(tier1_reward >= base_reward, ReferralError::InvalidTierReward);
-    require!(tier2_reward >= tier1_reward, ReferralError::InvalidTierReward);
-    require!(tier2_threshold > tier1_threshold, ReferralError::InvalidTierThreshold);
-    require!(revenue_share_percent <= MAX_FEE_PERCENTAGE, ReferralError::InvalidFeeAmount);
 
     // Set up referral program
     let referral_program = &mut ctx.accounts.referral_program;
@@ -111,7 +94,6 @@ pub fn create_referral_program(
     referral_program.token_mint = token_mint.unwrap_or_default();
     referral_program.fixed_reward_amount = fixed_reward_amount;
     referral_program.locked_period = locked_period;
-    referral_program.early_redemption_fee = early_redemption_fee;
     referral_program.is_active = true;
     referral_program.bump = ctx.bumps.referral_program;
 
@@ -119,16 +101,7 @@ pub fn create_referral_program(
     let criteria = &mut ctx.accounts.eligibility_criteria;
     let clock = Clock::get()?;
 
-    criteria.base_reward = base_reward;
-    criteria.tier1_threshold = tier1_threshold;
-    criteria.tier1_reward = tier1_reward;
-    criteria.tier2_threshold = tier2_threshold;
-    criteria.tier2_reward = tier2_reward;
     criteria.max_reward_cap = max_reward_cap;
-    criteria.revenue_share_percent = revenue_share_percent;
-
-    criteria.required_token = required_token;
-    criteria.min_token_amount = min_token_amount;
 
     criteria.program_start_time = clock.unix_timestamp;
     criteria.program_end_time = program_end_time;
@@ -328,18 +301,12 @@ pub struct ProgramSettings {
     pub fixed_reward_amount: u64,
     /// The locked period for referral rewards
     pub locked_period: i64,
-    /// The fee for early redemption of referral rewards
-    pub early_redemption_fee: u64,
     /// Optional end time for the referral program
     pub program_end_time: Option<i64>,
     /// The base reward amount for referrals
     pub base_reward: u64,
     /// The maximum reward cap
     pub max_reward_cap: u64,
-    /// The revenue share percentage
-    pub revenue_share_percent: u64,
-    /// The minimum token amount required (if using tokens)
-    pub min_token_amount: u64,
 }
 
 /// Accounts required for updating program settings
@@ -415,37 +382,16 @@ pub fn update_program_settings(
         );
     }
 
-    // Fee validations
-    require!(
-        new_settings.early_redemption_fee <= MAX_EARLY_REDEMPTION_FEE,
-        ReferralError::InvalidEarlyRedemptionFee
-    );
-    require!(
-        new_settings.revenue_share_percent <= MAX_FEE_PERCENTAGE,
-        ReferralError::InvalidFeeAmount
-    );
-
-    // Token amount validation (if program uses tokens)
-    if ctx.accounts.referral_program.token_mint != Pubkey::default() {
-        require!(
-            new_settings.min_token_amount > 0,
-            ReferralError::InvalidMinTokenAmount
-        );
-    }
-
     // Update core program settings
     let program = &mut ctx.accounts.referral_program;
     program.fixed_reward_amount = new_settings.fixed_reward_amount;
     program.locked_period = new_settings.locked_period;
-    program.early_redemption_fee = new_settings.early_redemption_fee;
 
     // Update eligibility criteria
     let criteria = &mut ctx.accounts.eligibility_criteria;
     criteria.program_end_time = new_settings.program_end_time;
     criteria.base_reward = new_settings.base_reward;
     criteria.max_reward_cap = new_settings.max_reward_cap;
-    criteria.revenue_share_percent = new_settings.revenue_share_percent;
-    criteria.min_token_amount = new_settings.min_token_amount;
     criteria.last_updated = current_time;
 
     Ok(())

@@ -23,16 +23,7 @@ fn test_create_sol_referral_program() {
         fixed_reward_amount,    // 1 SOL fixed reward
         locked_period,          // 7 days locked period
         early_redemption_fee,   // 10% early redemption fee
-        50_000_000,            // 0.05 SOL base reward
-        5,                      // 5 referrals for tier 1
-        75_000_000,            // 0.075 SOL tier1 reward (> base_reward)
-        10,                     // 10 referrals for tier 2
-        100_000_000,           // 0.1 SOL tier2 reward (> tier1_reward)
-        1_000_000_000,         // 1 SOL max reward cap
-        500,                    // 5% revenue share
-        None,                   // No required token
-        0,                      // No min token amount
-        None,                   // No end time
+        None,            // 0.05 SOL base reward
     );
 
     // Verify the created program
@@ -46,7 +37,6 @@ fn test_create_sol_referral_program() {
     assert_eq!(referral_program.token_mint, Pubkey::default()); // Default pubkey means SOL
     assert_eq!(referral_program.fixed_reward_amount, fixed_reward_amount);
     assert_eq!(referral_program.locked_period, locked_period);
-    assert_eq!(referral_program.early_redemption_fee, early_redemption_fee);
     assert_eq!(referral_program.total_referrals, 0);
     assert_eq!(referral_program.total_rewards_distributed, 0);
     assert!(referral_program.is_active);
@@ -80,16 +70,7 @@ fn test_sol_referral_program_not_sol_deposit() {
         1_000_000,             // 0.001 SOL fixed reward
         60,                    // 1 minute locked period
         2500,                  // 25% early redemption fee
-        50_000_000,            // 0.05 SOL base reward
-        5,                     // 5 referrals for tier 1
-        75_000_000,           // 0.075 SOL tier1 reward
-        10,                    // 10 referrals for tier 2
-        100_000_000,          // 0.1 SOL tier2 reward
-        1_000_000_000,        // 1 SOL max reward cap
-        500,                  // 5% revenue share
-        None,                 // No required token
-        0,                    // No min token amount
-        None,                 // No end time
+        None         // No end time
     );
 
     // Create a token mint and account to test invalid deposits
@@ -134,16 +115,7 @@ fn test_update_program_settings_success() {
         1_000_000,             // 0.001 SOL fixed reward
         60,                    // 1 minute locked period
         2500,                  // 25% early redemption fee
-        50_000_000,            // 0.05 SOL base reward
-        5,                     // 5 referrals for tier 1
-        75_000_000,           // 0.075 SOL tier1 reward
-        10,                    // 10 referrals for tier 2
-        100_000_000,          // 0.1 SOL tier2 reward
-        1_000_000_000,        // 1 SOL max reward cap
-        500,                  // 5% revenue share
-        None,                 // No required token
-        0,                    // No min token amount
-        None,                 // No end time
+        None     // No end time
     );
 
     // Find eligibility criteria PDA
@@ -156,12 +128,9 @@ fn test_update_program_settings_success() {
     let new_settings = ProgramSettings {
         fixed_reward_amount: 2_000_000,     // 0.002 SOL fixed reward
         locked_period: 86400,              // 1 day locked period (minimum allowed)
-        early_redemption_fee: 3000,         // 30% early redemption fee
         program_end_time: Some(i64::MAX),   // Set end time to max
         base_reward: 75_000_000,            // 0.075 SOL base reward
         max_reward_cap: 1_000_000_000,      // 1 SOL max reward cap
-        revenue_share_percent: 5000,         // 50% revenue share
-        min_token_amount: 0,                // No minimum token amount required
     };
 
     // Update program settings
@@ -193,7 +162,6 @@ fn test_update_program_settings_success() {
 
     assert_eq!(referral_program.fixed_reward_amount, new_settings.fixed_reward_amount);
     assert_eq!(referral_program.locked_period, new_settings.locked_period);
-    assert_eq!(referral_program.early_redemption_fee, new_settings.early_redemption_fee);
     // Verify eligibility criteria updates
     let eligibility_criteria: EligibilityCriteria = client
         .program(program_id)
@@ -203,7 +171,6 @@ fn test_update_program_settings_success() {
 
     assert_eq!(eligibility_criteria.base_reward, new_settings.base_reward);
     assert_eq!(eligibility_criteria.max_reward_cap, new_settings.max_reward_cap);
-    assert_eq!(eligibility_criteria.revenue_share_percent, new_settings.revenue_share_percent);
     assert_eq!(eligibility_criteria.program_end_time, new_settings.clone().program_end_time);
 }
 
@@ -219,16 +186,7 @@ fn test_update_program_settings_invalid_reward_amount() {
         1_000_000,             // 0.001 SOL fixed reward
         86400,                 // 1 day locked period
         2500,                  // 25% early redemption fee
-        50_000_000,            // 0.05 SOL base reward
-        5,                     // 5 referrals for tier 1
-        75_000_000,           // 0.075 SOL tier1 reward
-        10,                    // 10 referrals for tier 2
-        100_000_000,          // 0.1 SOL tier2 reward
-        1_000_000_000,        // 1 SOL max reward cap
-        500,                  // 5% revenue share
-        None,                 // No required token
-        0,                    // No min token amount
-        None,                 // No end time
+        None
     );
 
     // Find eligibility criteria PDA
@@ -241,12 +199,9 @@ fn test_update_program_settings_invalid_reward_amount() {
     let invalid_settings_1 = ProgramSettings {
         fixed_reward_amount: 0,            // Invalid: Zero reward
         locked_period: 86400,              // 1 day
-        early_redemption_fee: 2500,        // 25%
         program_end_time: None,
         base_reward: 50_000_000,           // 0.05 SOL
         max_reward_cap: 1_000_000_000,     // 1 SOL
-        revenue_share_percent: 500,         // 5%
-        min_token_amount: 0,
     };
 
     let result = client
@@ -271,12 +226,9 @@ fn test_update_program_settings_invalid_reward_amount() {
     let invalid_settings_2 = ProgramSettings {
         fixed_reward_amount: 1_000_000,     // 0.001 SOL
         locked_period: 86400,               // 1 day
-        early_redemption_fee: 2500,         // 25%
         program_end_time: None,
         base_reward: 2_000_000_000,         // Invalid: 2 SOL base reward > 1 SOL max cap
         max_reward_cap: 1_000_000_000,      // 1 SOL
-        revenue_share_percent: 500,          // 5%
-        min_token_amount: 0,
     };
 
     let result = client
@@ -310,16 +262,7 @@ fn test_update_program_settings_invalid_end_time() {
         1_000_000,             // 0.001 SOL fixed reward
         86400,                 // 1 day locked period
         2500,                  // 25% early redemption fee
-        50_000_000,            // 0.05 SOL base reward
-        5,                     // 5 referrals for tier 1
-        75_000_000,           // 0.075 SOL tier1 reward
-        10,                    // 10 referrals for tier 2
-        100_000_000,          // 0.1 SOL tier2 reward
-        1_000_000_000,        // 1 SOL max reward cap
-        500,                  // 5% revenue share
-        None,                 // No required token
-        0,                    // No min token amount
-        None,                 // No end time
+        None
     );
 
     // Find eligibility criteria PDA
@@ -338,12 +281,9 @@ fn test_update_program_settings_invalid_end_time() {
     let invalid_settings_1 = ProgramSettings {
         fixed_reward_amount: 1_000_000,     // 0.001 SOL
         locked_period: 86400,               // 1 day
-        early_redemption_fee: 2500,         // 25%
         program_end_time: Some(current_time - 1), // Invalid: End time in the past
         base_reward: 50_000_000,            // 0.05 SOL
         max_reward_cap: 1_000_000_000,      // 1 SOL
-        revenue_share_percent: 500,          // 5%
-        min_token_amount: 0,
     };
 
     let result = client
@@ -368,12 +308,9 @@ fn test_update_program_settings_invalid_end_time() {
     let invalid_settings_2 = ProgramSettings {
         fixed_reward_amount: 1_000_000,     // 0.001 SOL
         locked_period: 86400,               // 1 day
-        early_redemption_fee: 2500,         // 25%
         program_end_time: Some(current_time + 3600), // Invalid: End time only 1 hour in future (less than locked period)
         base_reward: 50_000_000,            // 0.05 SOL
         max_reward_cap: 1_000_000_000,      // 1 SOL
-        revenue_share_percent: 500,          // 5%
-        min_token_amount: 0,
     };
 
     let result = client
@@ -407,16 +344,7 @@ fn test_update_program_settings_invalid_locked_period() {
         1_000_000,             // 0.001 SOL fixed reward
         86400,                 // 1 day locked period
         2500,                  // 25% early redemption fee
-        50_000_000,            // 0.05 SOL base reward
-        5,                     // 5 referrals for tier 1
-        75_000_000,           // 0.075 SOL tier1 reward
-        10,                    // 10 referrals for tier 2
-        100_000_000,          // 0.1 SOL tier2 reward
-        1_000_000_000,        // 1 SOL max reward cap
-        500,                  // 5% revenue share
-        None,                 // No required token
-        0,                    // No min token amount
-        None,                 // No end time
+        None
     );
 
     // Find eligibility criteria PDA
@@ -429,12 +357,9 @@ fn test_update_program_settings_invalid_locked_period() {
     let invalid_settings_1 = ProgramSettings {
         fixed_reward_amount: 1_000_000,     // 0.001 SOL
         locked_period: 3600,                // Invalid: Only 1 hour (minimum is 1 day)
-        early_redemption_fee: 2500,         // 25%
         program_end_time: None,
         base_reward: 50_000_000,            // 0.05 SOL
         max_reward_cap: 1_000_000_000,      // 1 SOL
-        revenue_share_percent: 500,          // 5%
-        min_token_amount: 0,
     };
 
     let result = client
@@ -459,12 +384,9 @@ fn test_update_program_settings_invalid_locked_period() {
     let invalid_settings_2 = ProgramSettings {
         fixed_reward_amount: 1_000_000,     // 0.001 SOL
         locked_period: 31536000 + 86400,    // Invalid: 366 days (maximum is 365 days)
-        early_redemption_fee: 2500,         // 25%
         program_end_time: None,
         base_reward: 50_000_000,            // 0.05 SOL
         max_reward_cap: 1_000_000_000,      // 1 SOL
-        revenue_share_percent: 500,          // 5%
-        min_token_amount: 0,
     };
 
     let result = client
