@@ -26,7 +26,6 @@ pub mod solrefer {
     /// * `fixed_reward_amount` - The fixed amount of rewards for each referral.
     /// * `locked_period` - The period of time the rewards are locked before they can be redeemed.
     /// * `early_redemption_fee` - The fee charged for redeeming rewards early.
-    /// * `mint_fee` - The fee charged for minting new rewards.
     /// * `base_reward` - The base reward amount.
     /// * `tier1_threshold` - The threshold for the first tier of rewards.
     /// * `tier1_reward` - The reward amount for the first tier.
@@ -44,7 +43,6 @@ pub mod solrefer {
         fixed_reward_amount: u64,
         locked_period: i64,
         early_redemption_fee: u64,
-        mint_fee: u64,
         base_reward: u64,
         tier1_threshold: u64,
         tier1_reward: u64,
@@ -62,7 +60,6 @@ pub mod solrefer {
             fixed_reward_amount,
             locked_period,
             early_redemption_fee,
-            mint_fee,
             base_reward,
             tier1_threshold,
             tier1_reward,
@@ -163,5 +160,51 @@ pub mod solrefer {
         new_settings: ProgramSettings,
     ) -> Result<()> {
         instructions::referral_program::update_program_settings(ctx, new_settings)
+    }
+
+    /// Allows a user to join a referral program as someone who wants to refer others.
+    ///
+    /// This instruction creates a new participant account for the user and generates
+    /// their unique referral link that they can share with others. The user joins
+    /// directly (not through a referral).
+    ///
+    /// # Arguments
+    /// * `ctx` - The context containing:
+    ///   - referral_program: The program account (must be active)
+    ///   - participant: The new participant account to create
+    ///   - user: The user joining the program (signer)
+    ///   - system_program: The system program
+    ///   - rent: The rent sysvar
+    ///
+    /// # Errors
+    /// * `ProgramInactive` - If the referral program is not active
+    pub fn join_referral_program(
+        ctx: Context<JoinReferralProgram>,
+    ) -> Result<()> {
+        instructions::join_referral_program(ctx)
+    }
+
+    /// Join a referral program through someone's referral link.
+    ///
+    /// This instruction creates a new participant account for the user,
+    /// credits the referrer, and generates a new referral link for the user
+    /// to share with others.
+    ///
+    /// # Arguments
+    /// * `ctx` - The context containing:
+    ///   - referral_program: The program account (must be active)
+    ///   - participant: The new participant account to create
+    ///   - referrer: The referrer's participant account
+    ///   - user: The user joining through the referral (signer)
+    ///   - system_program: The system program
+    ///   - rent: The rent sysvar
+    ///
+    /// # Errors
+    /// * `ProgramInactive` - If the referral program is not active
+    /// * `InvalidReferrer` - If the referrer is not part of this program
+    pub fn join_through_referral(
+        ctx: Context<JoinThroughReferral>,
+    ) -> Result<()> {
+        instructions::join_through_referral(ctx)
     }
 }

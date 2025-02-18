@@ -12,7 +12,6 @@ pub struct ReferralProgram {
     pub fixed_reward_amount: u64,       // 8
     pub locked_period: i64,             // 8
     pub early_redemption_fee: u64,      // 8
-    pub mint_fee: u64,                  // 8
     pub min_stake_amount: u64,          // 8
     pub total_referrals: u64,           // 8
     pub total_rewards_distributed: u64, // 8
@@ -32,7 +31,6 @@ impl ReferralProgram {
         8 + // fixed_reward_amount
         8 + // locked_period
         8 + // early_redemption_fee
-        8 + // mint_fee
         8 + // min_stake_amount
         8 + // total_referrals
         8 + // total_rewards_distributed

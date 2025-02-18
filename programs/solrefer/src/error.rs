@@ -46,4 +46,6 @@ pub enum ReferralError {
     InvalidRewardCap,
     #[msg("Invalid minimum token amount - must be greater than 0 for token-based programs")]
     InvalidMinTokenAmount,
+    #[msg("Invalid referrer provided")]
+    InvalidReferrer,
 }

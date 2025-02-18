@@ -63,7 +63,6 @@ pub struct CreateReferralProgram<'info> {
 /// - `fixed_reward_amount`: The fixed reward amount for referrals.
 /// - `locked_period`: The locked period for referral rewards.
 /// - `early_redemption_fee`: The fee for early redemption of referral rewards.
-/// - `mint_fee`: The fee for minting referral rewards.
 /// - `base_reward`: The base reward amount for referrals.
 /// - `tier1_threshold`: The threshold for the first tier of referral rewards.
 /// - `tier1_reward`: The reward amount for the first tier of referrals.
@@ -84,8 +83,6 @@ pub fn create_referral_program(
     fixed_reward_amount: u64,
     locked_period: i64,
     early_redemption_fee: u64,
-    mint_fee: u64,
-    // Eligibility criteria parameters
     base_reward: u64,
     tier1_threshold: u64,
     tier1_reward: u64,
@@ -115,7 +112,6 @@ pub fn create_referral_program(
     referral_program.fixed_reward_amount = fixed_reward_amount;
     referral_program.locked_period = locked_period;
     referral_program.early_redemption_fee = early_redemption_fee;
-    referral_program.mint_fee = mint_fee;
     referral_program.is_active = true;
     referral_program.bump = ctx.bumps.referral_program;
 
@@ -334,8 +330,6 @@ pub struct ProgramSettings {
     pub locked_period: i64,
     /// The fee for early redemption of referral rewards
     pub early_redemption_fee: u64,
-    /// The fee for minting referral rewards
-    pub mint_fee: u64,
     /// Optional end time for the referral program
     pub program_end_time: Option<i64>,
     /// The base reward amount for referrals
@@ -427,10 +421,6 @@ pub fn update_program_settings(
         ReferralError::InvalidEarlyRedemptionFee
     );
     require!(
-        new_settings.mint_fee <= MAX_MINT_FEE,
-        ReferralError::InvalidMintFee
-    );
-    require!(
         new_settings.revenue_share_percent <= MAX_FEE_PERCENTAGE,
         ReferralError::InvalidFeeAmount
     );
@@ -448,7 +438,6 @@ pub fn update_program_settings(
     program.fixed_reward_amount = new_settings.fixed_reward_amount;
     program.locked_period = new_settings.locked_period;
     program.early_redemption_fee = new_settings.early_redemption_fee;
-    program.mint_fee = new_settings.mint_fee;
 
     // Update eligibility criteria
     let criteria = &mut ctx.accounts.eligibility_criteria;

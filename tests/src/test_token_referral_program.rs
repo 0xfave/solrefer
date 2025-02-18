@@ -17,7 +17,6 @@ fn test_create_referral_program_with_token_mint() {
     let fixed_reward_amount = 1_000_000_000; // 1 token
     let locked_period = 7 * 24 * 60 * 60; // 7 days in seconds
     let early_redemption_fee = 1000; // 10% in basis points
-    let mint_fee = 500; // 5% in basis points
 
     // Find PDA for referral program
     let binding = owner.pubkey();
@@ -46,7 +45,6 @@ fn test_create_referral_program_with_token_mint() {
             fixed_reward_amount,
             locked_period,
             early_redemption_fee,
-            mint_fee,
             base_reward: 50_000_000,       // 0.05 SOL base reward
             tier1_threshold: 5,            // 5 referrals for tier 1
             tier1_reward: 75_000_000,      // 0.075 SOL tier 1 reward
@@ -76,7 +74,6 @@ fn test_create_referral_program_with_token_mint() {
     assert_eq!(referral_program.fixed_reward_amount, fixed_reward_amount);
     assert_eq!(referral_program.locked_period, locked_period);
     assert_eq!(referral_program.early_redemption_fee, early_redemption_fee);
-    assert_eq!(referral_program.mint_fee, mint_fee);
     assert_eq!(referral_program.total_referrals, 0);
     assert_eq!(referral_program.total_rewards_distributed, 0);
     assert!(referral_program.is_active);
