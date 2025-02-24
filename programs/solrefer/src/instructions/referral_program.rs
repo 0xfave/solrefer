@@ -81,19 +81,19 @@ pub fn create_referral_program(
     ctx: Context<CreateReferralProgram>,
     token_mint: Option<Pubkey>,
     fixed_reward_amount: u64,
-    locked_period: i64,
-    max_reward_cap: u64,
-    program_end_time: Option<i64>,
+    program_end_time: i64,
 ) -> Result<()> {
     // Validate base parameters
     require!(fixed_reward_amount >= MIN_REWARD_AMOUNT, ReferralError::InvalidRewardAmount);
+
+    let current_time = Clock::get()?.unix_timestamp;
+    require!(program_end_time > current_time, ReferralError::InvalidEndTime);
 
     // Set up referral program
     let referral_program = &mut ctx.accounts.referral_program;
     referral_program.authority = ctx.accounts.authority.key();
     referral_program.token_mint = token_mint.unwrap_or_default();
     referral_program.fixed_reward_amount = fixed_reward_amount;
-    referral_program.locked_period = locked_period;
     referral_program.is_active = true;
     referral_program.bump = ctx.bumps.referral_program;
 
@@ -101,7 +101,6 @@ pub fn create_referral_program(
     let criteria = &mut ctx.accounts.eligibility_criteria;
     let clock = Clock::get()?;
 
-    criteria.max_reward_cap = max_reward_cap;
 
     criteria.program_start_time = clock.unix_timestamp;
     criteria.program_end_time = program_end_time;
@@ -173,7 +172,7 @@ pub fn set_eligibility_criteria(
     revenue_share_percent: u64,
     required_token: Option<Pubkey>,
     min_token_amount: u64,
-    program_end_time: Option<i64>,
+    program_end_time: i64,
 ) -> Result<()> {
     let criteria = &mut ctx.accounts.eligibility_criteria;
     let clock = Clock::get()?;
@@ -302,7 +301,7 @@ pub struct ProgramSettings {
     /// The locked period for referral rewards
     pub locked_period: i64,
     /// Optional end time for the referral program
-    pub program_end_time: Option<i64>,
+    pub program_end_time: i64,
     /// The base reward amount for referrals
     pub base_reward: u64,
     /// The maximum reward cap
@@ -370,17 +369,16 @@ pub fn update_program_settings(
         new_settings.locked_period >= MIN_LOCKED_PERIOD && new_settings.locked_period <= MAX_LOCKED_PERIOD,
         ReferralError::InvalidLockedPeriod
     );
-    if let Some(end_time) = new_settings.program_end_time {
-        require!(
-            end_time > current_time,
-            ReferralError::InvalidProgramEndTime
-        );
-        // Ensure end time is after locked period
-        require!(
-            end_time > current_time + new_settings.locked_period,
-            ReferralError::InvalidProgramEndTime
-        );
-    }
+    let end_time = new_settings.program_end_time;
+    require!(
+        end_time > current_time,
+        ReferralError::InvalidProgramEndTime
+    );
+    // Ensure end time is after locked period
+    require!(
+        end_time > current_time + new_settings.locked_period,
+        ReferralError::InvalidProgramEndTime
+    );
 
     // Update core program settings
     let program = &mut ctx.accounts.referral_program;

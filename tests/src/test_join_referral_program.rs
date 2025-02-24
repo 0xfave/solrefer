@@ -1,6 +1,8 @@
-use anchor_client::solana_sdk::{pubkey::Pubkey, signer::Signer, system_program, system_instruction, signature::Keypair};
+use anchor_client::solana_sdk::{
+    pubkey::Pubkey, signature::Keypair, signer::Signer, system_instruction, system_program,
+};
 use solrefer::state::Participant;
-use std::str;
+use std::{i64, str};
 
 use crate::test_util::{create_sol_referral_program, setup};
 
@@ -13,19 +15,13 @@ fn test_join_referral_program_sucesss() {
         &owner,
         &client,
         program_id,
-        1_000_000,             // 1 SOL fixed reward
-        7 * 24 * 60 * 60,      // 7 days locked period
-        1_000_000_000,         // 1 SOL max reward cap
-        None,                  // No end time
+        1_000_000, // 1 SOL max reward cap
+        i64::MAX,  // No end time
     );
 
     // Calculate PDA for participant account
     let (participant_pubkey, _) = Pubkey::find_program_address(
-        &[
-            b"participant",
-            referral_program_pubkey.as_ref(),
-            alice.pubkey().as_ref(),
-        ],
+        &[b"participant", referral_program_pubkey.as_ref(), alice.pubkey().as_ref()],
         &program_id,
     );
 
@@ -46,9 +42,7 @@ fn test_join_referral_program_sucesss() {
         .unwrap();
 
     // Verify participant account was created correctly
-    let participant_account: Participant = program
-        .account(participant_pubkey)
-        .unwrap();
+    let participant_account: Participant = program.account(participant_pubkey).unwrap();
     assert_eq!(participant_account.owner, alice.pubkey());
     assert_eq!(participant_account.program, referral_program_pubkey);
     assert_eq!(participant_account.total_referrals, 0);
@@ -56,13 +50,8 @@ fn test_join_referral_program_sucesss() {
     assert_eq!(participant_account.referrer, None);
 
     // Convert bytes to string, trimming null bytes
-    let referral_link = str::from_utf8(&participant_account.referral_link)
-        .unwrap()
-        .trim_matches(char::from(0));
-    assert_eq!(
-        referral_link,
-        format!("https://solrefer.io/ref/{}", alice.pubkey())
-    );
+    let referral_link = str::from_utf8(&participant_account.referral_link).unwrap().trim_matches(char::from(0));
+    assert_eq!(referral_link, format!("https://solrefer.io/ref/{}", alice.pubkey()));
 }
 
 #[test]
@@ -74,19 +63,13 @@ fn test_join_through_referral_success() {
         &owner,
         &client,
         program_id,
-        1_000_000,             // 1 SOL fixed reward
-        7 * 24 * 60 * 60,      // 7 days locked period
-        1_000_000_000,         // 1 SOL max reward cap
-        None,                  // No end time
+        1_000_000, // 1 SOL max reward cap
+        i64::MAX,
     );
 
     // Calculate PDA for referrer's participant account
     let (referrer_participant_pubkey, _) = Pubkey::find_program_address(
-        &[
-            b"participant",
-            referral_program_pubkey.as_ref(),
-            alice.pubkey().as_ref(),
-        ],
+        &[b"participant", referral_program_pubkey.as_ref(), alice.pubkey().as_ref()],
         &program_id,
     );
 
@@ -108,11 +91,7 @@ fn test_join_through_referral_success() {
 
     // Calculate PDA for Bob's participant account
     let (participant_pubkey, _) = Pubkey::find_program_address(
-        &[
-            b"participant",
-            referral_program_pubkey.as_ref(),
-            bob.pubkey().as_ref(),
-        ],
+        &[b"participant", referral_program_pubkey.as_ref(), bob.pubkey().as_ref()],
         &program_id,
     );
 
@@ -133,9 +112,7 @@ fn test_join_through_referral_success() {
         .unwrap();
 
     // Verify Bob's participant account was created correctly
-    let participant_account: Participant = program
-        .account(participant_pubkey)
-        .unwrap();
+    let participant_account: Participant = program.account(participant_pubkey).unwrap();
     assert_eq!(participant_account.owner, bob.pubkey());
     assert_eq!(participant_account.program, referral_program_pubkey);
     assert_eq!(participant_account.total_referrals, 0);
@@ -143,18 +120,11 @@ fn test_join_through_referral_success() {
     assert_eq!(participant_account.referrer, Some(referrer_participant_pubkey));
 
     // Convert bytes to string, trimming null bytes
-    let referral_link = str::from_utf8(&participant_account.referral_link)
-        .unwrap()
-        .trim_matches(char::from(0));
-    assert_eq!(
-        referral_link,
-        format!("https://solrefer.io/ref/{}", bob.pubkey())
-    );
+    let referral_link = str::from_utf8(&participant_account.referral_link).unwrap().trim_matches(char::from(0));
+    assert_eq!(referral_link, format!("https://solrefer.io/ref/{}", bob.pubkey()));
 
     // Verify Alice's stats were updated
-    let referrer_account: Participant = program
-        .account(referrer_participant_pubkey)
-        .unwrap();
+    let referrer_account: Participant = program.account(referrer_participant_pubkey).unwrap();
     assert_eq!(referrer_account.total_referrals, 1);
 }
 
@@ -164,15 +134,7 @@ fn test_join_through_invalid_referral() {
     let (owner, _, bob, program_id, client) = setup();
 
     // Create a SOL referral program
-    let (referral_program_pubkey, _) = create_sol_referral_program(
-        &owner,
-        &client,
-        program_id,
-        1_000_000,             // 1 SOL fixed reward
-        7 * 24 * 60 * 60,      // 7 days locked period
-        1_000_000_000,         // 1 SOL max reward cap
-        None,                  // No end time
-    );
+    let (referral_program_pubkey, _) = create_sol_referral_program(&owner, &client, program_id, 1_000_000, i64::MAX);
 
     // Create a keypair for the invalid account
     let invalid_account = Keypair::new();
@@ -184,8 +146,8 @@ fn test_join_through_invalid_referral() {
         .instruction(system_instruction::create_account(
             &bob.pubkey(),
             &invalid_account.pubkey(),
-            10_000_000, // 0.01 SOL
-            0,          // No data
+            10_000_000,          // 0.01 SOL
+            0,                   // No data
             &system_program::ID, // Owned by system program
         ))
         .signer(&bob)
@@ -195,11 +157,7 @@ fn test_join_through_invalid_referral() {
 
     // Calculate PDA for Bob's participant account
     let (participant_pubkey, _) = Pubkey::find_program_address(
-        &[
-            b"participant",
-            referral_program_pubkey.as_ref(),
-            bob.pubkey().as_ref(),
-        ],
+        &[b"participant", referral_program_pubkey.as_ref(), bob.pubkey().as_ref()],
         &program_id,
     );
 

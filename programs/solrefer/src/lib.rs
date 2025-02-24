@@ -25,34 +25,17 @@ pub mod solrefer {
     /// * `token_mint` - The optional token mint for the referral program rewards.
     /// * `fixed_reward_amount` - The fixed amount of rewards for each referral.
     /// * `locked_period` - The period of time the rewards are locked before they can be redeemed.
-    /// * `early_redemption_fee` - The fee charged for redeeming rewards early.
-    /// * `base_reward` - The base reward amount.
-    /// * `tier1_threshold` - The threshold for the first tier of rewards.
-    /// * `tier1_reward` - The reward amount for the first tier.
-    /// * `tier2_threshold` - The threshold for the second tier of rewards.
-    /// * `tier2_reward` - The reward amount for the second tier.
     /// * `max_reward_cap` - The maximum total reward amount that can be earned.
     /// * `revenue_share_percent` - The percentage of revenue shared with referrers.
-    /// * `required_token` - The optional token required to participate in the referral program.
-    /// * `min_token_amount` - The minimum token amount required to participate.
     /// * `program_end_time` - The optional end time for the referral program.
     #[allow(clippy::too_many_arguments)]
     pub fn create_referral_program(
         ctx: Context<CreateReferralProgram>,
         token_mint: Option<Pubkey>,
         fixed_reward_amount: u64,
-        locked_period: i64,
-        max_reward_cap: u64,
-        program_end_time: Option<i64>,
+        program_end_time: i64,
     ) -> Result<()> {
-        instructions::referral_program::create_referral_program(
-            ctx,
-            token_mint,
-            fixed_reward_amount,
-            locked_period,
-            max_reward_cap,
-            program_end_time,
-        )
+        instructions::referral_program::create_referral_program(ctx, token_mint, fixed_reward_amount, program_end_time)
     }
 
     /// Initializes the token vault for a token-based referral program.
@@ -137,10 +120,7 @@ pub mod solrefer {
     /// # Arguments
     /// * `ctx` - The context for the UpdateProgramSettings instruction
     /// * `new_settings` - The new settings to apply to the program
-    pub fn update_program_settings(
-        ctx: Context<UpdateProgramSettings>,
-        new_settings: ProgramSettings,
-    ) -> Result<()> {
+    pub fn update_program_settings(ctx: Context<UpdateProgramSettings>, new_settings: ProgramSettings) -> Result<()> {
         instructions::referral_program::update_program_settings(ctx, new_settings)
     }
 
@@ -160,9 +140,7 @@ pub mod solrefer {
     ///
     /// # Errors
     /// * `ProgramInactive` - If the referral program is not active
-    pub fn join_referral_program(
-        ctx: Context<JoinReferralProgram>,
-    ) -> Result<()> {
+    pub fn join_referral_program(ctx: Context<JoinReferralProgram>) -> Result<()> {
         instructions::join_referral_program(ctx)
     }
 
@@ -184,9 +162,28 @@ pub mod solrefer {
     /// # Errors
     /// * `ProgramInactive` - If the referral program is not active
     /// * `InvalidReferrer` - If the referrer is not part of this program
-    pub fn join_through_referral(
-        ctx: Context<JoinThroughReferral>,
-    ) -> Result<()> {
+    pub fn join_through_referral(ctx: Context<JoinThroughReferral>) -> Result<()> {
         instructions::join_through_referral(ctx)
+    }
+
+    /// Claims earned rewards for a participant in the referral program.
+    ///
+    /// This instruction calculates and transfers the earned rewards from the program vault
+    /// to the participant based on their referral performance. The reward amount is determined
+    /// by the participant's total referrals and program parameters.
+    ///
+    /// # Arguments
+    /// * `ctx` - The context containing:
+    ///   - referral_program: The program account
+    ///   - participant: The participant's account
+    ///   - vault: The program's vault
+    ///   - user: The participant claiming rewards (signer)
+    ///   - system_program: The system program
+    ///
+    /// # Errors
+    /// * `InsufficientFunds` - If the vault has insufficient funds
+    /// * `NumericOverflow` - If calculations result in overflow
+    pub fn claim_rewards(ctx: Context<ClaimRewards>) -> Result<()> {
+        instructions::rewards::process_claim_rewards(ctx)
     }
 }

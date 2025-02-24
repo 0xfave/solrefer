@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 /// Represents a participant in the referral program.
-/// 
+///
 /// This struct stores information about a participant including their:
 /// - Referral link for sharing with others
 /// - Total number of successful referrals

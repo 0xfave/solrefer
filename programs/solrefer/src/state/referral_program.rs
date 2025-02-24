@@ -13,8 +13,12 @@ pub struct ReferralProgram {
     pub locked_period: i64,             // 8
     pub total_referrals: u64,           // 8
     pub total_rewards_distributed: u64, // 8
+    pub total_available: u64,           // 8
     pub is_active: bool,                // 1
     pub bump: u8,                       // 1
+    pub total_participants: u64,        // 8
+    /// Bump seed for the vault PDA
+    pub vault_bump: u8, // Add this field
 }
 
 /// The size of the `ReferralProgram` account in bytes.
@@ -32,8 +36,11 @@ impl ReferralProgram {
         8 + // min_stake_amount
         8 + // total_referrals
         8 + // total_rewards_distributed
+        8 + // total_available
         1 + // is_active
-        1; // bump
+        1 + // bump
+        8 + // total_participants
+        1; // vault_bump
 }
 
 /// Represents the eligibility criteria for a referral program.
@@ -59,8 +66,8 @@ pub struct EligibilityCriteria {
     pub min_token_amount: u64,          // 8
 
     // Time Parameters
-    pub program_start_time: i64,       // 8
-    pub program_end_time: Option<i64>, // 8 + 1
+    pub program_start_time: i64, // 8
+    pub program_end_time: i64,   // 8 + 1
 
     // Status
     pub is_active: bool,   // 1

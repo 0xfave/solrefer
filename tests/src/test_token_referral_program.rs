@@ -15,7 +15,6 @@ fn test_create_referral_program_with_token_mint() {
 
     // Test parameters
     let fixed_reward_amount = 1_000_000_000; // 1 token
-    let locked_period = 7 * 24 * 60 * 60; // 7 days in seconds
 
     // Find PDA for referral program
     let binding = owner.pubkey();
@@ -42,9 +41,7 @@ fn test_create_referral_program_with_token_mint() {
         .args(solrefer::instruction::CreateReferralProgram {
             token_mint: Some(mint.pubkey()),
             fixed_reward_amount,
-            locked_period,   // 0.1 SOL tier 2 reward
-            max_reward_cap: 1_000_000_000,
-            program_end_time: None,
+            program_end_time: i64::MAX,
         })
         .signer(&owner)
         .send()
@@ -62,7 +59,6 @@ fn test_create_referral_program_with_token_mint() {
     assert_eq!(referral_program.authority, owner.pubkey());
     assert_eq!(referral_program.token_mint, mint.pubkey());
     assert_eq!(referral_program.fixed_reward_amount, fixed_reward_amount);
-    assert_eq!(referral_program.locked_period, locked_period);
     assert_eq!(referral_program.total_referrals, 0);
     assert_eq!(referral_program.total_rewards_distributed, 0);
     assert!(referral_program.is_active);

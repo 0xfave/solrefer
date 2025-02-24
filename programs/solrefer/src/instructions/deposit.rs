@@ -50,7 +50,7 @@ pub struct DepositSol<'info> {
 pub fn deposit_sol(ctx: Context<DepositSol>, amount: u64) -> Result<()> {
     require!(amount > 0, ReferralError::InsufficientDeposit);
 
-    let referral_program = &ctx.accounts.referral_program;
+    let referral_program = &mut ctx.accounts.referral_program;
 
     // Validate that the program is not a token program
     if referral_program.token_mint != Pubkey::default() {
@@ -61,10 +61,19 @@ pub fn deposit_sol(ctx: Context<DepositSol>, amount: u64) -> Result<()> {
     system_program::transfer(
         CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
-            Transfer { from: ctx.accounts.authority.to_account_info(), to: ctx.accounts.vault.to_account_info() },
+            Transfer {
+                from: ctx.accounts.authority.to_account_info(),
+                to: ctx.accounts.vault.to_account_info(),
+            },
         ),
         amount,
     )?;
+
+    referral_program.reload()?;
+
+    // Update total available rewards
+    referral_program.total_available =
+        referral_program.total_available.checked_add(amount).ok_or(ReferralError::NumericOverflow)?;
 
     msg!("Deposited {} lamports to referral program", amount);
     Ok(())
@@ -128,7 +137,7 @@ pub struct DepositToken<'info> {
 pub fn deposit_token(ctx: Context<DepositToken>, amount: u64) -> Result<()> {
     require!(amount > 0, ReferralError::InsufficientDeposit);
 
-    let referral_program = &ctx.accounts.referral_program;
+    let referral_program = &mut ctx.accounts.referral_program;
 
     // Validate that the program is a token program
     if referral_program.token_mint == Pubkey::default() {
@@ -147,6 +156,12 @@ pub fn deposit_token(ctx: Context<DepositToken>, amount: u64) -> Result<()> {
         ),
         amount,
     )?;
+
+    referral_program.reload()?;
+
+    // Update total available rewards
+    referral_program.total_available =
+        referral_program.total_available.checked_add(amount).ok_or(ReferralError::NumericOverflow)?;
 
     msg!("Deposited {} tokens to referral program", amount);
     Ok(())

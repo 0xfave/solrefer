@@ -1,24 +1,16 @@
-use crate::{error::ReferralError, state::{referral_program::*, participant::*}};
-use anchor_lang::{
-    prelude::*,
-    system_program::System,
+use crate::{
+    error::ReferralError,
+    state::{participant::*, referral_program::*},
 };
+use anchor_lang::{prelude::*, system_program::System};
 use std::mem::size_of;
 
-pub fn join_through_referral(
-    ctx: Context<JoinThroughReferral>,
-) -> Result<()> {
+pub fn join_through_referral(ctx: Context<JoinThroughReferral>) -> Result<()> {
     // 1. Verify program is active
-    require!(
-        ctx.accounts.referral_program.is_active,
-        ReferralError::ProgramInactive
-    );
+    require!(ctx.accounts.referral_program.is_active, ReferralError::ProgramInactive);
 
     // 2. Verify referrer exists and is valid
-    require!(
-        ctx.accounts.referrer.program == ctx.accounts.referral_program.key(),
-        ReferralError::InvalidReferrer
-    );
+    require!(ctx.accounts.referrer.program == ctx.accounts.referral_program.key(), ReferralError::InvalidReferrer);
 
     // 3. Create participant account
     let participant = &mut ctx.accounts.participant;

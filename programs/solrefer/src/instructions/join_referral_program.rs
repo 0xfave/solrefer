@@ -1,21 +1,16 @@
-use crate::{error::ReferralError, state::{referral_program::*, participant::*}};
-use anchor_lang::{
-    prelude::*,
-    system_program::System,
+use crate::{
+    error::ReferralError,
+    state::{participant::*, referral_program::*},
 };
+use anchor_lang::{prelude::*, system_program::System};
 use std::mem::size_of;
 
 /// Join a referral program as a new participant who wants to refer others.
 /// This creates their participant account and generates their unique referral link
 /// that they can share with others.
-pub fn join_referral_program(
-    ctx: Context<JoinReferralProgram>,
-) -> Result<()> {
+pub fn join_referral_program(ctx: Context<JoinReferralProgram>) -> Result<()> {
     // 1. Verify program is active
-    require!(
-        ctx.accounts.referral_program.is_active,
-        ReferralError::ProgramInactive
-    );
+    require!(ctx.accounts.referral_program.is_active, ReferralError::ProgramInactive);
 
     // 2. Create participant account
     let participant = &mut ctx.accounts.participant;

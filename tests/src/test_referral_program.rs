@@ -1,6 +1,11 @@
+use std::i64;
+
 use anchor_client::solana_sdk::{pubkey::Pubkey, signer::Signer, system_program};
 use anchor_spl::token::spl_token;
-use solrefer::{state::{ReferralProgram, EligibilityCriteria}, instructions::ProgramSettings};
+use solrefer::{
+    instructions::ProgramSettings,
+    state::{EligibilityCriteria, ReferralProgram},
+};
 
 use crate::test_util::{
     create_mint, create_sol_referral_program, create_token_account, deposit_sol, mint_tokens, setup,
@@ -12,18 +17,14 @@ fn test_create_sol_referral_program() {
 
     // Test parameters
     let fixed_reward_amount = 1000000; // 1 SOL
-    let locked_period = 7 * 24 * 60 * 60; // 7 days in seconds
-    let early_redemption_fee = 1000; // 10% in basis points
 
     // Create SOL referral program
     let (referral_program_pubkey, _) = create_sol_referral_program(
         &owner,
         &client,
         program_id,
-        fixed_reward_amount,    // 1 SOL fixed reward
-        locked_period,          // 7 days locked period
-        early_redemption_fee,   // 10% early redemption fee
-        None,            // 0.05 SOL base reward
+        fixed_reward_amount,
+        i64::MAX, // 0.05 SOL base reward
     );
 
     // Verify the created program
@@ -36,7 +37,6 @@ fn test_create_sol_referral_program() {
     assert_eq!(referral_program.authority, owner.pubkey());
     assert_eq!(referral_program.token_mint, Pubkey::default()); // Default pubkey means SOL
     assert_eq!(referral_program.fixed_reward_amount, fixed_reward_amount);
-    assert_eq!(referral_program.locked_period, locked_period);
     assert_eq!(referral_program.total_referrals, 0);
     assert_eq!(referral_program.total_rewards_distributed, 0);
     assert!(referral_program.is_active);
@@ -63,15 +63,8 @@ fn test_sol_referral_program_not_sol_deposit() {
     let (owner, _, _, program_id, client) = setup();
 
     // Create a SOL referral program
-    let (referral_program_pubkey, vault) = create_sol_referral_program(
-        &owner,
-        &client,
-        program_id,
-        1_000_000,             // 0.001 SOL fixed reward
-        60,                    // 1 minute locked period
-        2500,                  // 25% early redemption fee
-        None         // No end time
-    );
+    let (referral_program_pubkey, vault) =
+        create_sol_referral_program(&owner, &client, program_id, 1_000_000, i64::MAX);
 
     // Create a token mint and account to test invalid deposits
     let mint = create_mint(&owner, &client, program_id);
@@ -108,29 +101,19 @@ fn test_update_program_settings_success() {
     let (owner, _, _, program_id, client) = setup();
 
     // Create a SOL referral program
-    let (referral_program_pubkey, _) = create_sol_referral_program(
-        &owner,
-        &client,
-        program_id,
-        1_000_000,             // 0.001 SOL fixed reward
-        60,                    // 1 minute locked period
-        2500,                  // 25% early redemption fee
-        None     // No end time
-    );
+    let (referral_program_pubkey, _) = create_sol_referral_program(&owner, &client, program_id, 1_000_000, i64::MAX);
 
     // Find eligibility criteria PDA
-    let (eligibility_criteria_pubkey, _) = Pubkey::find_program_address(
-        &[b"eligibility_criteria", referral_program_pubkey.as_ref()],
-        &program_id,
-    );
+    let (eligibility_criteria_pubkey, _) =
+        Pubkey::find_program_address(&[b"eligibility_criteria", referral_program_pubkey.as_ref()], &program_id);
 
     // New settings to update
     let new_settings = ProgramSettings {
-        fixed_reward_amount: 2_000_000,     // 0.002 SOL fixed reward
-        locked_period: 86400,              // 1 day locked period (minimum allowed)
-        program_end_time: Some(i64::MAX),   // Set end time to max
-        base_reward: 75_000_000,            // 0.075 SOL base reward
-        max_reward_cap: 1_000_000_000,      // 1 SOL max reward cap
+        fixed_reward_amount: 2_000_000, // 0.002 SOL fixed reward
+        locked_period: 86400,           // 1 day locked period (minimum allowed)
+        program_end_time: i64::MAX,     // Set end time to max
+        base_reward: 75_000_000,        // 0.075 SOL base reward
+        max_reward_cap: 1_000_000_000,  // 1 SOL max reward cap
     };
 
     // Update program settings
@@ -144,9 +127,7 @@ fn test_update_program_settings_success() {
             authority: owner.pubkey(),
             system_program: system_program::ID,
         })
-        .args(solrefer::instruction::UpdateProgramSettings {
-            new_settings: new_settings.clone(),
-        })
+        .args(solrefer::instruction::UpdateProgramSettings { new_settings: new_settings.clone() })
         .signer(&owner)
         .send()
         .expect("Failed to update program settings");
@@ -183,25 +164,21 @@ fn test_update_program_settings_invalid_reward_amount() {
         &owner,
         &client,
         program_id,
-        1_000_000,             // 0.001 SOL fixed reward
-        86400,                 // 1 day locked period
-        2500,                  // 25% early redemption fee
-        None
+        1_000_000, // 0.001 SOL fixed reward
+        i64::MAX,
     );
 
     // Find eligibility criteria PDA
-    let (eligibility_criteria_pubkey, _) = Pubkey::find_program_address(
-        &[b"eligibility_criteria", referral_program_pubkey.as_ref()],
-        &program_id,
-    );
+    let (eligibility_criteria_pubkey, _) =
+        Pubkey::find_program_address(&[b"eligibility_criteria", referral_program_pubkey.as_ref()], &program_id);
 
     // Test case 1: Zero fixed reward amount
     let invalid_settings_1 = ProgramSettings {
-        fixed_reward_amount: 0,            // Invalid: Zero reward
-        locked_period: 86400,              // 1 day
-        program_end_time: None,
-        base_reward: 50_000_000,           // 0.05 SOL
-        max_reward_cap: 1_000_000_000,     // 1 SOL
+        fixed_reward_amount: 0,        // Invalid: Zero reward
+        locked_period: 86400,          // 1 day
+        program_end_time: i64::MAX,    // Set end time to max
+        base_reward: 50_000_000,       // 0.05 SOL
+        max_reward_cap: 1_000_000_000, // 1 SOL
     };
 
     let result = client
@@ -214,9 +191,7 @@ fn test_update_program_settings_invalid_reward_amount() {
             authority: owner.pubkey(),
             system_program: system_program::ID,
         })
-        .args(solrefer::instruction::UpdateProgramSettings {
-            new_settings: invalid_settings_1.clone(),
-        })
+        .args(solrefer::instruction::UpdateProgramSettings { new_settings: invalid_settings_1.clone() })
         .signer(&owner)
         .send();
 
@@ -224,11 +199,11 @@ fn test_update_program_settings_invalid_reward_amount() {
 
     // Test case 2: Base reward greater than max reward cap
     let invalid_settings_2 = ProgramSettings {
-        fixed_reward_amount: 1_000_000,     // 0.001 SOL
-        locked_period: 86400,               // 1 day
-        program_end_time: None,
-        base_reward: 2_000_000_000,         // Invalid: 2 SOL base reward > 1 SOL max cap
-        max_reward_cap: 1_000_000_000,      // 1 SOL
+        fixed_reward_amount: 1_000_000, // 0.001 SOL
+        locked_period: 86400,           // 1 day
+        program_end_time: i64::MAX,     // Set end time to max
+        base_reward: 2_000_000_000,     // Invalid: 2 SOL base reward > 1 SOL max cap
+        max_reward_cap: 1_000_000_000,  // 1 SOL
     };
 
     let result = client
@@ -241,9 +216,7 @@ fn test_update_program_settings_invalid_reward_amount() {
             authority: owner.pubkey(),
             system_program: system_program::ID,
         })
-        .args(solrefer::instruction::UpdateProgramSettings {
-            new_settings: invalid_settings_2.clone(),
-        })
+        .args(solrefer::instruction::UpdateProgramSettings { new_settings: invalid_settings_2.clone() })
         .signer(&owner)
         .send();
 
@@ -259,29 +232,22 @@ fn test_update_program_settings_invalid_end_time() {
         &owner,
         &client,
         program_id,
-        1_000_000,             // 0.001 SOL fixed reward
-        86400,                 // 1 day locked period
-        2500,                  // 25% early redemption fee
-        None
+        1_000_000, // 0.001 SOL fixed reward
+        i64::MAX,
     );
 
     // Find eligibility criteria PDA
-    let (eligibility_criteria_pubkey, _) = Pubkey::find_program_address(
-        &[b"eligibility_criteria", referral_program_pubkey.as_ref()],
-        &program_id,
-    );
+    let (eligibility_criteria_pubkey, _) =
+        Pubkey::find_program_address(&[b"eligibility_criteria", referral_program_pubkey.as_ref()], &program_id);
 
     // Get current time
-    let current_time = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64;
+    let current_time = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64;
 
     // Test case 1: End time in the past
     let invalid_settings_1 = ProgramSettings {
         fixed_reward_amount: 1_000_000,     // 0.001 SOL
         locked_period: 86400,               // 1 day
-        program_end_time: Some(current_time - 1), // Invalid: End time in the past
+        program_end_time: current_time - 1, // Invalid: End time in the past
         base_reward: 50_000_000,            // 0.05 SOL
         max_reward_cap: 1_000_000_000,      // 1 SOL
     };
@@ -296,9 +262,7 @@ fn test_update_program_settings_invalid_end_time() {
             authority: owner.pubkey(),
             system_program: system_program::ID,
         })
-        .args(solrefer::instruction::UpdateProgramSettings {
-            new_settings: invalid_settings_1.clone(),
-        })
+        .args(solrefer::instruction::UpdateProgramSettings { new_settings: invalid_settings_1.clone() })
         .signer(&owner)
         .send();
 
@@ -306,11 +270,11 @@ fn test_update_program_settings_invalid_end_time() {
 
     // Test case 2: End time before locked period ends
     let invalid_settings_2 = ProgramSettings {
-        fixed_reward_amount: 1_000_000,     // 0.001 SOL
-        locked_period: 86400,               // 1 day
-        program_end_time: Some(current_time + 3600), // Invalid: End time only 1 hour in future (less than locked period)
-        base_reward: 50_000_000,            // 0.05 SOL
-        max_reward_cap: 1_000_000_000,      // 1 SOL
+        fixed_reward_amount: 1_000_000,        // 0.001 SOL
+        locked_period: 86400,                  // 1 day
+        program_end_time: current_time + 3600, // Invalid: End time only 1 hour in future (less than locked period)
+        base_reward: 50_000_000,               // 0.05 SOL
+        max_reward_cap: 1_000_000_000,         // 1 SOL
     };
 
     let result = client
@@ -323,9 +287,7 @@ fn test_update_program_settings_invalid_end_time() {
             authority: owner.pubkey(),
             system_program: system_program::ID,
         })
-        .args(solrefer::instruction::UpdateProgramSettings {
-            new_settings: invalid_settings_2.clone(),
-        })
+        .args(solrefer::instruction::UpdateProgramSettings { new_settings: invalid_settings_2.clone() })
         .signer(&owner)
         .send();
 
@@ -341,25 +303,21 @@ fn test_update_program_settings_invalid_locked_period() {
         &owner,
         &client,
         program_id,
-        1_000_000,             // 0.001 SOL fixed reward
-        86400,                 // 1 day locked period
-        2500,                  // 25% early redemption fee
-        None
+        1_000_000, // 0.001 SOL fixed reward
+        i64::MAX,
     );
 
     // Find eligibility criteria PDA
-    let (eligibility_criteria_pubkey, _) = Pubkey::find_program_address(
-        &[b"eligibility_criteria", referral_program_pubkey.as_ref()],
-        &program_id,
-    );
+    let (eligibility_criteria_pubkey, _) =
+        Pubkey::find_program_address(&[b"eligibility_criteria", referral_program_pubkey.as_ref()], &program_id);
 
     // Test case 1: Locked period too short (less than 1 day)
     let invalid_settings_1 = ProgramSettings {
-        fixed_reward_amount: 1_000_000,     // 0.001 SOL
-        locked_period: 3600,                // Invalid: Only 1 hour (minimum is 1 day)
-        program_end_time: None,
-        base_reward: 50_000_000,            // 0.05 SOL
-        max_reward_cap: 1_000_000_000,      // 1 SOL
+        fixed_reward_amount: 1_000_000, // 0.001 SOL
+        locked_period: 3600,            // Invalid: Only 1 hour (minimum is 1 day)
+        program_end_time: i64::MAX,     // Set end time to max
+        base_reward: 50_000_000,        // 0.05 SOL
+        max_reward_cap: 1_000_000_000,  // 1 SOL
     };
 
     let result = client
@@ -372,9 +330,7 @@ fn test_update_program_settings_invalid_locked_period() {
             authority: owner.pubkey(),
             system_program: system_program::ID,
         })
-        .args(solrefer::instruction::UpdateProgramSettings {
-            new_settings: invalid_settings_1.clone(),
-        })
+        .args(solrefer::instruction::UpdateProgramSettings { new_settings: invalid_settings_1.clone() })
         .signer(&owner)
         .send();
 
@@ -382,11 +338,11 @@ fn test_update_program_settings_invalid_locked_period() {
 
     // Test case 2: Locked period too long (more than 365 days)
     let invalid_settings_2 = ProgramSettings {
-        fixed_reward_amount: 1_000_000,     // 0.001 SOL
-        locked_period: 31536000 + 86400,    // Invalid: 366 days (maximum is 365 days)
-        program_end_time: None,
-        base_reward: 50_000_000,            // 0.05 SOL
-        max_reward_cap: 1_000_000_000,      // 1 SOL
+        fixed_reward_amount: 1_000_000,  // 0.001 SOL
+        locked_period: 31536000 + 86400, // Invalid: 366 days (maximum is 365 days)
+        program_end_time: i64::MAX,      // Set end time to max
+        base_reward: 50_000_000,         // 0.05 SOL
+        max_reward_cap: 1_000_000_000,   // 1 SOL
     };
 
     let result = client
@@ -399,9 +355,7 @@ fn test_update_program_settings_invalid_locked_period() {
             authority: owner.pubkey(),
             system_program: system_program::ID,
         })
-        .args(solrefer::instruction::UpdateProgramSettings {
-            new_settings: invalid_settings_2.clone(),
-        })
+        .args(solrefer::instruction::UpdateProgramSettings { new_settings: invalid_settings_2.clone() })
         .signer(&owner)
         .send();
 

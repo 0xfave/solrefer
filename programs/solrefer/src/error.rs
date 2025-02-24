@@ -48,4 +48,18 @@ pub enum ReferralError {
     InvalidMinTokenAmount,
     #[msg("Invalid referrer provided")]
     InvalidReferrer,
+    #[msg("No rewards available to claim")]
+    NoRewardsAvailable,
+    #[msg("Rewards are still locked")]
+    RewardsLocked,
+    #[msg("Insufficient vault balance")]
+    InsufficientVaultBalance,
+    #[msg("Invalid time period")]
+    InvalidEndTime,
+    #[msg("Overflow when calculating rewards")]
+    NumericOverflow,
+    #[msg("Insufficient funds")]
+    InsufficientFunds,
+    #[msg("Lock period has not elapsed yet")]
+    LockPeriodNotElapsed,
 }

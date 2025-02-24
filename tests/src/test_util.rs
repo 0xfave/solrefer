@@ -283,9 +283,7 @@ pub fn create_sol_referral_program(
     client: &Client<Arc<Keypair>>,
     program_id: Pubkey,
     fixed_reward_amount: u64,
-    locked_period: i64,
-    max_reward_cap: u64,
-    program_end_time: Option<i64>,
+    program_end_time: i64,
 ) -> (Pubkey, Pubkey) {
     // Find the PDA for referral program
     let (referral_program, _) =
@@ -305,13 +303,7 @@ pub fn create_sol_referral_program(
             token_program: None,
             system_program: system_program::ID,
         })
-        .args(solrefer::instruction::CreateReferralProgram {
-            token_mint: None,
-            fixed_reward_amount,
-            locked_period,
-            max_reward_cap,
-            program_end_time,
-        })
+        .args(solrefer::instruction::CreateReferralProgram { token_mint: None, fixed_reward_amount, program_end_time })
         .signer(owner)
         .send()
         .expect("Failed to create SOL referral program");
