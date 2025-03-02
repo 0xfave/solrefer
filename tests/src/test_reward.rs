@@ -19,7 +19,7 @@ fn test_reward_claim() {
     );
 
     // Find PDA for vault
-    let (vault, vault_bump) = Pubkey::find_program_address(&[VAULT_SEED, referral_program_pubkey.as_ref()], &program_id);
+    let (vault, _) = Pubkey::find_program_address(&[VAULT_SEED, referral_program_pubkey.as_ref()], &program_id);
 
     // Fund vault
     let deposit_amount = 1_000_000_000; // 1 SOL

@@ -5,7 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-solrefer = "DvdCTkZBHpUpPYAccKkN3DQtu69GCEre3gsPJ7r33W35"
+solrefer = "EwUYBCEJYXkVNK49wwoYhi2T7m83jBLzhXvEG71UQ3kM"
 
 [registry]
 url = "https://api.apr.dev"

@@ -6,7 +6,7 @@ pub mod state;
 use anchor_lang::prelude::*;
 use instructions::*;
 
-declare_id!("DvdCTkZBHpUpPYAccKkN3DQtu69GCEre3gsPJ7r33W35");
+declare_id!("EwUYBCEJYXkVNK49wwoYhi2T7m83jBLzhXvEG71UQ3kM");
 
 #[program]
 pub mod solrefer {
